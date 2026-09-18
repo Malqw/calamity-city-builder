@@ -1,0 +1,1123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Билдер отрядов Calamity City</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+  :root{
+    --bg:#eef0e6; --surface:#ffffff; --surface-2:#e3e6d7; --surface-3:#d5d9c4;
+    --border:#c4c9b0; --text:#1b1f14; --text-muted:#5e6350;
+    --accent:#4f6b34; --accent-strong:#3c5427; --accent-ink:#f7f9ef;
+    --warn:#8a6112; --warn-bg:#f5ead0; --danger:#a8341f; --danger-bg:#f6ded7;
+    --good:#2f6b41; --good-bg:#dcead9;
+    --shadow:0 1px 2px rgba(20,24,12,.08), 0 4px 14px rgba(20,24,12,.07);
+    --radius:10px; --radius-sm:6px;
+    --font-display:'Big Shoulders Display',system-ui,sans-serif;
+    --font-body:'Public Sans',system-ui,-apple-system,sans-serif;
+    --font-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14170f; --surface:#1c2116; --surface-2:#242a1b; --surface-3:#2e3423;
+      --border:#3b4130; --text:#eceee2; --text-muted:#9ba189;
+      --accent:#8fbf62; --accent-strong:#a6d47d; --accent-ink:#12160c;
+      --warn:#dba848; --warn-bg:#3a3117; --danger:#e2765a; --danger-bg:#3a211a;
+      --good:#7fc496; --good-bg:#1e3325;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14170f; --surface:#1c2116; --surface-2:#242a1b; --surface-3:#2e3423;
+    --border:#3b4130; --text:#eceee2; --text-muted:#9ba189;
+    --accent:#8fbf62; --accent-strong:#a6d47d; --accent-ink:#12160c;
+    --warn:#dba848; --warn-bg:#3a3117; --danger:#e2765a; --danger-bg:#3a211a;
+    --good:#7fc496; --good-bg:#1e3325;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 4px 18px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box;}
+  body{ background:var(--bg); color:var(--text); font-family:var(--font-body); padding-inline:16px; padding-block:0 32px; }
+  h1,h2,h3{ font-family:var(--font-display); font-weight:800; text-wrap:balance; letter-spacing:.2px; margin:0; }
+  .num{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+  a{ color:var(--accent-strong); }
+  button, select, input{ font-family:var(--font-body); font-size:14px; }
+  button{ cursor:pointer; }
+  button:focus-visible, select:focus-visible, input:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+  [hidden]{ display:none!important; }
+
+  .wrap{ max-width:1080px; margin:0 auto; }
+
+  /* top bar */
+  .topbar{ position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--bg); padding-block:14px 10px; border-bottom:1px solid var(--border); margin-bottom:18px; }
+  .topbar-inner{ max-width:1080px; margin:0 auto; display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; }
+  .brand{ font-size:22px; line-height:1; }
+  .brand small{ display:block; font-family:var(--font-body); font-weight:500; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-top:3px; }
+  .tabs{ display:flex; gap:4px; margin-left:auto; flex-wrap:wrap; }
+  .tab-btn{ border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:999px; padding:7px 14px; font-weight:600; font-size:13px; }
+  .tab-btn[aria-selected="true"]{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+
+  section.view{ display:flex; flex-direction:column; gap:18px; }
+
+  /* summary strip */
+  .summary{ display:grid; grid-template-columns:1.4fr repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+  @media (max-width:720px){ .summary{ grid-template-columns:1fr 1fr; } }
+  .summary > div{ background:var(--surface); padding:12px 14px; display:flex; flex-direction:column; gap:4px; justify-content:center; }
+  .summary .label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:600; }
+  .summary .value{ font-family:var(--font-mono); font-size:19px; font-weight:600; }
+  .summary .name-cell input{ font-family:var(--font-display); font-size:19px; font-weight:700; border:none; background:transparent; color:var(--text); padding:0; width:100%; }
+  .summary .name-cell input:focus{ outline:none; border-bottom:1px solid var(--accent); }
+  .budget-edit{ display:flex; align-items:center; gap:4px; }
+  .budget-edit input{ width:52px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:2px 5px; font-family:var(--font-mono); }
+  .pill{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:600; }
+  .pill.good{ background:var(--good-bg); color:var(--good); }
+  .pill.danger{ background:var(--danger-bg); color:var(--danger); }
+  .pill.warn{ background:var(--warn-bg); color:var(--warn); }
+
+  .issues{ display:flex; flex-direction:column; gap:6px; }
+  .issue{ font-size:13px; padding:8px 12px; border-radius:var(--radius-sm); background:var(--warn-bg); color:var(--warn); border:1px solid color-mix(in srgb, var(--warn) 35%, transparent); }
+  .issue.danger{ background:var(--danger-bg); color:var(--danger); }
+
+  .toolbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btn{ border:1px solid var(--border); background:var(--surface); color:var(--text); border-radius:var(--radius-sm); padding:8px 13px; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px; }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+  .btn.primary:hover{ background:var(--accent-strong); }
+  .btn.ghost{ background:transparent; }
+  .btn.small{ padding:5px 10px; font-size:12px; }
+  .btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .add-menu{ position:relative; display:inline-block; }
+  .add-dropdown{ position:absolute; top:calc(100% + 4px); left:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); box-shadow:var(--shadow); min-width:220px; z-index:30; padding:4px; }
+  .add-dropdown button{ display:flex; justify-content:space-between; gap:8px; width:100%; text-align:left; border:none; background:transparent; padding:8px 10px; border-radius:var(--radius-sm); color:var(--text); font-size:13px; }
+  .add-dropdown button:hover:not(:disabled){ background:var(--surface-2); }
+  .add-dropdown button:disabled{ opacity:.4; cursor:not-allowed; }
+  .add-dropdown .cap{ color:var(--text-muted); font-family:var(--font-mono); font-size:12px; }
+
+  /* unit card */
+  .unit{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  .unit-head{ background:var(--surface-2); padding:12px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .unit-head input.uname{ font-family:var(--font-display); font-weight:700; font-size:18px; background:transparent; border:none; color:var(--text); min-width:0; flex:1 1 180px; }
+  .unit-head input.uname:focus{ outline:none; border-bottom:1px solid var(--accent); }
+  .role-tag{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; color:var(--text-muted); background:var(--surface); border:1px solid var(--border); padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .size-select{ border:1px solid var(--border); background:var(--surface); border-radius:var(--radius-sm); padding:4px 6px; color:var(--text); font-family:var(--font-mono); }
+  .unit-cost{ font-family:var(--font-mono); font-weight:700; font-size:16px; margin-left:auto; }
+  .unit-body{ padding:16px; display:flex; flex-direction:column; gap:16px; }
+
+  .stat-row{ display:grid; grid-template-columns:repeat(6,1fr); gap:8px; }
+  @media (max-width:720px){ .stat-row{ grid-template-columns:repeat(3,1fr); } }
+  .stat-box{ border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px; text-align:center; background:var(--surface); }
+  .stat-box .sname{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:600; }
+  .stat-box .sval{ font-family:var(--font-mono); font-size:18px; font-weight:700; margin:4px 0; }
+  .stat-box .stepper{ display:flex; justify-content:center; gap:4px; }
+  .stepper button{ width:22px; height:22px; border-radius:5px; border:1px solid var(--border); background:var(--surface-2); color:var(--text); line-height:1; font-weight:700; padding:0; }
+  .stepper button:disabled{ opacity:.35; }
+
+  .derived-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  @media (max-width:520px){ .derived-row{ grid-template-columns:repeat(2,1fr); } }
+  .derived-box{ border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px; text-align:center; background:var(--surface-3); }
+  .derived-box .dname{ font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); font-weight:600; }
+  .derived-box .dval{ font-family:var(--font-mono); font-size:17px; font-weight:700; }
+
+  .note-inline{ font-size:12px; color:var(--text-muted); }
+
+  .section-h{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; font-weight:700; color:var(--text-muted); margin-bottom:6px; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:640px){ .two-col{ grid-template-columns:1fr; } }
+
+  .check-list{ display:flex; flex-direction:column; gap:4px; max-height:210px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px; background:var(--surface); }
+  .check-item{ display:flex; align-items:flex-start; gap:7px; padding:5px 6px; border-radius:5px; font-size:12.5px; line-height:1.35; }
+  .check-item:hover{ background:var(--surface-2); }
+  .check-item input{ margin-top:3px; flex:none; }
+  .check-item .it-name{ font-weight:600; }
+  .check-item .it-meta{ color:var(--text-muted); }
+  .check-item.disabled{ opacity:.4; }
+  .check-item .cost-chip{ margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); white-space:nowrap; }
+
+  select.armor-select{ width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 8px; background:var(--surface); color:var(--text); }
+
+  .unit-foot{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; padding-top:10px; border-top:1px dashed var(--border); }
+  .slot-meter{ font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+  .slot-meter.over{ color:var(--danger); font-weight:700; }
+
+  /* glossary / rules card */
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; }
+  .glossary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; font-size:12.5px; }
+  @media (max-width:640px){ .glossary-grid{ grid-template-columns:1fr; } }
+  .glossary-grid dt{ font-weight:700; margin-top:6px; }
+  .glossary-grid dd{ margin:0 0 4px 0; color:var(--text-muted); }
+
+  .rule-list{ display:flex; flex-direction:column; gap:8px; font-size:13px; }
+  .rule-list b{ color:var(--text); }
+
+  /* my squads */
+  .squad-row{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); flex-wrap:wrap; }
+  .squad-row .sn{ font-weight:700; flex:1 1 160px; }
+  .squad-row .meta{ font-size:12px; color:var(--text-muted); font-family:var(--font-mono); }
+
+  /* admin */
+  .admin-entity{ display:grid; grid-template-columns:1.3fr .6fr 2fr; gap:8px; align-items:center; padding:8px 4px; border-bottom:1px solid var(--border); font-size:12.5px; }
+  @media (max-width:640px){ .admin-entity{ grid-template-columns:1fr; } }
+  .admin-entity input, .admin-entity select{ width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:5px 7px; background:var(--surface); color:var(--text); }
+  .admin-group h3{ font-size:16px; margin:20px 0 6px; }
+  .admin-group h3:first-child{ margin-top:0; }
+  .save-bar{ position:sticky; bottom:0; background:var(--bg); padding-block:10px; border-top:1px solid var(--border); display:flex; gap:8px; align-items:center; }
+
+  .empty-note{ font-size:13px; color:var(--text-muted); padding:20px; text-align:center; }
+  .footer-note{ font-size:11.5px; color:var(--text-muted); text-align:center; padding-top:10px; }
+  .data-banner{ font-size:12.5px; padding:8px 12px; border-radius:var(--radius-sm); margin-bottom:10px; }
+  .data-banner.offline{ background:var(--warn-bg); color:var(--warn); }
+  .id-bar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+  .id-bar input{ border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 9px; background:var(--surface); color:var(--text); font-size:13px; }
+  .id-bar .note-inline{ font-size:11.5px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">Билдер отрядов<small>Calamity City &middot; варгейм в разработке</small></div>
+    <div class="tabs" role="tablist">
+      <button class="tab-btn" data-tab="builder" onclick="App.setTab('builder')" aria-selected="true">Билдер</button>
+      <button class="tab-btn" data-tab="mine" onclick="App.setTab('mine')" aria-selected="false">Мои отряды</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div id="data-banner"></div>
+  <section class="view" id="view-builder"></section>
+  <section class="view" id="view-mine" hidden></section>
+  <p class="footer-note">Локальный инструмент для тестовых партий — не официальный релиз игры. Циферки и тексты правятся в общей Google Таблице; отряды у каждого свои (по имени и коду доступа).</p>
+</div>
+
+<script>
+(function(){
+
+/* ---------------------------------------------------------------- DATA ---- */
+
+var DEFAULT_DATA = {
+  archetypes: {
+    organization: {
+      id:'organization', name:'Организация',
+      blurb:'Профессиональные оперативники: военные, агенты, наёмники, специалисты — полагаются на подготовку и снаряжение, а не на сверхспособности.',
+      specialRules:[
+        {name:'Сосредоточенные на миссии', text:'Когда персонаж Организации впервые за раунд успешно проходит проверку, связанную с миссией — отряд получает 1 Очко Мотивации.'},
+        {name:'Специалисты широкого профиля', text:'Командир и Ветераны Организации могут выбрать ещё одну категорию способностей; для них она считается способностью архетипа (билдер это не считает автоматически — выбирайте вручную).'},
+        {name:'Цепочка командования', text:'Пока Ветеран Организации в пределах 8" от Командира — он снижает сложность простых проверок Интеллекта и Воли на 1. Пока Новобранец в пределах 8" от Ветерана — то же самое.'}
+      ],
+      archetypeCategories:['Общие','Стратегия','Беспощадность','Точность'],
+      roles:{
+        commander:{ id:'commander', name:'Командир', tier:'senior', maxCount:1, sizeMin:1, sizeMax:2, defaultSize:2, cost:10, level:8, statIncreases:5, archetypeAbilitySlots:2, anyAbilitySlots:1 },
+        veteran:{ id:'veteran', name:'Ветеран', tier:'senior', maxCount:3, sizeMin:1, sizeMax:2, defaultSize:2, cost:7, level:6, statIncreases:4, archetypeAbilitySlots:2, anyAbilitySlots:0 },
+        heavyVeteran:{ id:'heavyVeteran', name:'Тяжёлый Ветеран', tier:'senior', maxCount:2, sizeMin:2, sizeMax:3, defaultSize:3, cost:8, level:6, statIncreases:3, archetypeAbilitySlots:2, anyAbilitySlots:0, builtinArmor:1, builtinHealth:2, mightBaseline:'d8', speedCapped:true },
+        recruit:{ id:'recruit', name:'Новобранец', tier:'novice', maxCount:6, sizeMin:1, sizeMax:2, defaultSize:2, cost:3, level:3, statIncreases:2, archetypeAbilitySlots:0, anyAbilitySlots:0 }
+      }
+    },
+    gifted: {
+      id:'gifted', name:'Одарённые',
+      blurb:'Мутанты, маги, вампиры, культисты, сверхлюди — их силы выходят далеко за пределы нормы человека.',
+      specialRules:[
+        {name:'Особая сила', text:'В начале фазы действия Командир/Ветеран может использовать способность Духовной силы или Манифестации без траты Очков Мотивации (без урона врагам; при переменной стоимости — как минимальная).'},
+        {name:'Сверхъестественная связь', text:'Когда Командир/Ветеран впервые за раунд тратит Очки Мотивации — дружественный Новобранец в 12" получает Быстрое Ожидание.'},
+        {name:'Пробуждение', text:'Когда Командир/Ветеран в свою активацию успешно применяет Сверхъестественную Силу — получает быстрое действие Взаимодействия.'},
+        {name:'«Больше, чем человек» (порог)', text:'При 3+ способностях этой категории у персонажа — не может Взаимодействовать с нейтралами через проверки Воли. При 4+ — также не может Взаимодействовать с объектами через проверки Интеллекта.'}
+      ],
+      archetypeCategories:['Общие','Стратегия','Вдохновение','Больше чем человек','Духовные силы','Манифестация'],
+      roles:{
+        commander:{ id:'commander', name:'Командир', tier:'senior', maxCount:1, sizeMin:1, sizeMax:2, defaultSize:2, cost:15, level:9, statIncreases:5, archetypeAbilitySlots:3, anyAbilitySlots:1,
+          archetypeCategories:['Общие','Стратегия','Вдохновение','Больше чем человек','Духовные силы','Манифестация'] },
+        veteran:{ id:'veteran', name:'Ветеран', tier:'senior', maxCount:3, sizeMin:1, sizeMax:2, defaultSize:2, cost:12, level:7, statIncreases:4, archetypeAbilitySlots:2, anyAbilitySlots:1,
+          archetypeCategories:['Общие','Стратегия','Вдохновение','Больше чем человек','Духовные силы','Манифестация'] },
+        heavyRecruit:{ id:'heavyRecruit', name:'Тяжёлый Новобранец', tier:'novice', maxCount:2, sizeMin:3, sizeMax:3, defaultSize:3, cost:7, level:5, statIncreases:3, archetypeAbilitySlots:1, anyAbilitySlots:0,
+          archetypeCategories:['Общие','Проворство','Мощь','Больше чем человек'],
+          note:'Дополнительно получает 1 бесплатную встроенную способность категории «Больше чем человек» — билдер её не считает в лимит слотов, впишите вручную на карточке.' },
+        recruit:{ id:'recruit', name:'Новобранец', tier:'novice', maxCount:3, sizeMin:1, sizeMax:2, defaultSize:2, cost:5, level:4, statIncreases:2, archetypeAbilitySlots:1, anyAbilitySlots:0,
+          archetypeCategories:['Общие','Проворство','Мощь','Больше чем человек'] }
+      }
+    },
+    heavy: {
+      id:'heavy', name:'Тяжёлый отряд',
+      blurb:'Тяжелобронированные солдаты, роботы, мехи и могущественные потусторонние существа — внушительный размер и разрушительная сила.',
+      specialRules:[
+        {name:'Шок и трепет', text:'В начале фазы действия отряд получает доп. Очко Мотивации. Тратить Очки Мотивации могут только персонажи размера 3.'},
+        {name:'За гранью возможного', text:'Раз за раунд, в начале активации любого персонажа размера 3 — он может получить быстрое действие.'},
+        {name:'Неостановимая сила', text:'Персонажи размера 3 получают встроенную Броню 1 и +1 Здоровье (билдер считает это автоматически по размеру).'},
+        {name:'«Больше, чем человек» (порог)', text:'При 3+ способностях этой категории у персонажа — не может Взаимодействовать с нейтралами через проверки Воли. При 4+ — также не может Взаимодействовать с объектами через проверки Интеллекта.'}
+      ],
+      archetypeCategories:['Общие','Мощь','Беспощадность','Точность','Больше чем человек'],
+      sizeBonusRule:{ size:3, armor:1, health:1 },
+      roles:{
+        commander:{ id:'commander', name:'Командир', tier:'senior', maxCount:1, sizeMin:3, sizeMax:3, defaultSize:3, cost:16, level:9, statIncreases:5, archetypeAbilitySlots:3, anyAbilitySlots:1 },
+        veteran:{ id:'veteran', name:'Ветеран', tier:'senior', maxCount:3, sizeMin:3, sizeMax:3, defaultSize:3, cost:13, level:7, statIncreases:4, archetypeAbilitySlots:2, anyAbilitySlots:1 },
+        heavyRecruit:{ id:'heavyRecruit', name:'Тяжёлый Новобранец', tier:'novice', maxCount:3, sizeMin:3, sizeMax:3, defaultSize:3, cost:8, level:5, statIncreases:3, archetypeAbilitySlots:1, anyAbilitySlots:0 },
+        recruit:{ id:'recruit', name:'Новобранец', tier:'novice', maxCount:3, sizeMin:1, sizeMax:2, defaultSize:2, cost:5, level:4, statIncreases:2, archetypeAbilitySlots:1, anyAbilitySlots:0 }
+      }
+    }
+  },
+
+  abilities:{
+    ambidexter:{name:'Амбидекстер', category:'Общие', text:'Если персонаж одновременно вооружён двумя оружиями ближнего боя или двумя стрелковыми без пометки Двуручное и одно из них Лёгкое — при стандартном действии Сражения/Стрельбы: получает быстрое действие того же типа, либо урон используемого оружия +1 (если дальность второго не меньше).'},
+    zdorovyak:{name:'Здоровяк', category:'Общие', text:'Персонаж получает +1 к Здоровью и +1 слот инвентаря.'},
+    stubborn:{name:'Упорный', category:'Общие', text:'Когда персонаж тратит Очко Мотивации для понижения сложности проверки и проверка всё равно проваливается — Очко Мотивации восстанавливается.'},
+    resilient:{name:'Живучий', category:'Общие', text:'В конце активации при Здоровье ≤3 (и неполном) — проверка Воли(4): успех восстанавливает 1 Здоровье.'},
+    lucky:{name:'Везучий', category:'Общие', text:'Когда для успеха не хватает ровно 1 — можно потратить Очко Мотивации, снизив сложность на 1.'},
+    hyperactive:{name:'Гиперактивный', category:'Общие', text:'До двух разных эффектов Мотивации за активацию вместо одного (не одинаковых).'},
+
+    acrobatics:{name:'Акробатические движения', category:'Проворство', text:'Не получает урона от падения при добровольном перемещении. Особое Взаимодействие дальностью 2 на элемент террейна своего размера или менее: проверка Ловкости(4), успех — переместиться в контакт с элементом, супер-успех — в пределах 3".'},
+    sprint:{name:'Спринт', category:'Проворство', text:'После стандартного Перемещения — быстрое действие Перемещения.'},
+    charge_attack:{name:'Атака на ходу', category:'Проворство', text:'После стандартного Рывка — быстрое действие Сражения.'},
+    run_and_gun:{name:'Беги и стреляй', category:'Проворство', text:'После стандартного действия Стрельбы — быстрое действие Рывка.'},
+    lightning_reaction:{name:'Молниеносная реакция', category:'Проворство', text:'При действии Ожидания (стандартном или быстром) можно получить статус Ожидание(Рывок) / Быстрое Ожидание(Рывок).'},
+
+    iron_fist:{name:'Железный кулак', category:'Мощь', text:'Безоружная атака становится: ближний бой, дальность 1, урон 2, Бронебойность(1), Пролом(4+), Лёгкое. Персонаж всегда вооружён двумя такими «оружиями».'},
+    born_wrestler:{name:'Рестлер по призванию', category:'Мощь', text:'+1 слот инвентаря. Особое Взаимодействие дальностью 1 на врага равного/меньшего размера: встречная проверка Силы (+2 если цель меньше) — успех: Бросок цели на дистанцию = максимум Силы; супер-успех: урон столкновения +1.'},
+    ramming_blow:{name:'Таранный удар', category:'Мощь', text:'Если атака Сражения сняла ≥2 Здоровья — можно совершить Бросок цели на 3".'},
+    crushing_blows:{name:'Дробящие удары', category:'Мощь', text:'Атака Сражения оружием с Требует Силу, снявшая ≥2 Здоровья — цель проходит проверку Воли(4) или получает Оглушение.'},
+
+    tactical_advantage:{name:'Тактическое преимущество', category:'Стратегия', text:'Взаимодействие дальностью 6" на дружественного: проверка Интеллекта(4) — успех: Ожидание; супер-успех: ещё один дружественный в 6" получает Быстрое Ожидание.'},
+    part_of_plan:{name:'Часть плана', category:'Стратегия', text:'Взаимодействие дальностью 12" на врага в ЛВ: встречная проверка Интеллекта — успех: недобровольное Передвижение цели (без падения); супер-успех: цель также Оглушена.'},
+    outstanding_mind:{name:'Выдающийся ум', category:'Стратегия', text:'Проверка Интеллекта с супер-успехом — быстрое действие Взаимодействия или статус Быстрое Ожидание.'},
+    cunning:{name:'Коварный', category:'Стратегия', text:'При ничьей в броске инициативы — вы выигрываете (если у обоих есть Коварный — всё ещё ничья).'},
+
+    command_tone:{name:'Командный тон', category:'Вдохновение', text:'Только лидер отряда или персонаж с Героическим броском. Взаимодействие дальностью 6" на дружественного: проверка Воли(4) — успех: цель немедленно действует; супер-успех: применивший получает быстрое действие.'},
+    inspiring_presence:{name:'Вдохновляющее присутствие', category:'Вдохновение', text:'Супер-успех на стандартном действии этого персонажа — отряд получает 1 Очко Мотивации.'},
+    heroic_example:{name:'Героический пример', category:'Вдохновение', text:'Первое за бой использование Последнего Шанса этим персонажем — дружественный в 12" снимает Жетон Активации.'},
+    grim_resolve:{name:'Мрачная решимость', category:'Вдохновение', text:'В начале активации можно потерять до 2 Здоровья и получить до 2 быстрых действий (нельзя при Здоровье ≤2).'},
+
+    ruthless:{name:'Безжалостный', category:'Беспощадность', text:'Против персонажа с Жетоном активации оружие получает Надёжное(1) и Бронебойность(1).'},
+    duelist:{name:'Дуэлянт', category:'Беспощадность', text:'Оружие персонажа получает Блок(1).'},
+    counterattack:{name:'Контрудар', category:'Беспощадность', text:'Враг заявил этого персонажа целью Сражения (до проверки) — персонаж получает Быстрое Ожидание(Сражение).'},
+    finishing_blow:{name:'Добивающий удар', category:'Беспощадность', text:'Атака Сражения ввела врага в Тяжёлое ранение — проверка Сражения(4): успех — враг удалён с поля, Выбывший из боя.'},
+
+    sniper_stance:{name:'Снайперская позиция', category:'Точность', text:'На террейне своего размера или больше — стрелковое оружие получает Меткое и Надёжное(1).'},
+    relentless_barrage:{name:'Неистовый залп', category:'Точность', text:'При Стрельбе с Очередь(X) — можно увеличить X на 2, тогда оружие получает жетон Разряженного оружия(1).'},
+    quick_reload:{name:'Быстрая перезарядка', category:'Точность', text:'После действия Рывка — быстрое действие Взаимодействия только на перезарядку оружия.'},
+    steady_stance:{name:'Устойчивое положение', category:'Точность', text:'Не двигался и не делал Рывок в активацию — в конце получает Ожидание(Стрельба).'},
+
+    extra_limb:{name:'Ещё одна конечность', category:'Больше чем человек', text:'Персонаж получает ещё одну руку и 1 слот инвентаря. Можно взять несколько раз.'},
+    winged:{name:'Крылатый', category:'Больше чем человек', text:'Персонаж получает тип передвижения Полёт.'},
+    tough_hide:{name:'Крепкий покров', category:'Больше чем человек', text:'Персонаж получает Броню 2.'},
+    builtin_melee:{name:'Встроенное оружие ближнего боя', category:'Больше чем человек', text:'Выберите профиль: Встроенное тяжёлое (дальн.1, урон3, Бронебойность(2)) либо Встроенное длинное (дальн.3, урон2, Бронебойность(1), Пролом(4+)). Не занимает слотов. В начале активации — быстрое действие Сражения. Можно взять несколько раз (2-й раз — вместо доп. быстрого действия оружие получает Лёгкое).'},
+    builtin_ranged:{name:'Встроенное стрелковое оружие', category:'Больше чем человек', text:'Выберите профиль: Огненное дыхание (дальн.10, урон3, Фокусированный огонь(0–6)) либо Сфокусированный выстрел (дальн.18, урон2, Бронебойность(5)). Занимает 1 слот, не занимает рук. Можно взять несколько раз (2-й раз — оружие получает Лёгкое).'},
+
+    telepathy:{name:'Телепатия', category:'Духовные силы', text:'Стоимость 2 Очка Мотивации. Взаимодействие дальностью 12 на любого. На врага — встречная проверка Интеллекта: успех — недобровольное стандартное действие (враг считает свой отряд враждебным, ваш — дружественным); супер-успех(1) — также Оглушение; супер-успех(2+) — Оглушение и Замедление. На союзника — проверка Интеллекта(3): успех — стандартное действие; супер-успех — также Быстрое Ожидание.'},
+    healing_wave:{name:'Целебная волна', category:'Духовные силы', text:'Стоимость 1 Очко Мотивации. Взаимодействие дальностью 8 на союзника/нейтрала: проверка Интеллекта(3) — успех восстанавливает 2 Здоровья; супер-успех(X) — ещё X Здоровья.'},
+    invisibility_power:{name:'Невидимость', category:'Духовные силы', text:'Стоимость 1 Очко Мотивации. Взаимодействие дальностью 6 на союзника/нейтрала: проверка Интеллекта(3) — успех даёт статус Скрытый; супер-успех — применивший тоже становится Скрытым.'},
+    time_acceleration:{name:'Ускорение времени', category:'Духовные силы', text:'Стоимость 2 Очка Мотивации. Взаимодействие дальностью 6 на союзника: проверка Интеллекта(5) — успех снимает Жетон Активации; супер-успех — также быстрое действие Перемещения.'},
+    time_stop:{name:'Остановка времени', category:'Духовные силы', text:'Стоимость 2 Очка Мотивации. Взаимодействие дальностью 6 на врага: встречная проверка Интеллекта — успех даёт Оглушение и Замедление; супер-успех — Жетон Активации и Замедление вместо обычного эффекта.'},
+
+    discharge:{name:'Разряд', category:'Манифестация', text:'Стоимость 1–2 Очка Мотивации. Действие Стрельбы профилем: дальн.12, урон4, Пролом(5+); при трате 2 Очков — Пролом(6+) и Меткое.'},
+    destructive_pulse:{name:'Разрушительный импульс', category:'Манифестация', text:'Стоимость 1 Очко Мотивации. Взаимодействие на себя: проверка Интеллекта(4). Все в 3" проходят проверку Силы(6) — провал: 3 урона и недобровольный Бросок на 1" (дальше при супер-успехе(X) на +X).'},
+    terrain_control:{name:'Контроль ландшафта', category:'Манифестация', text:'Стоимость 1 Очко Мотивации. Взаимодействие дальностью 6 на точку в ЛВ: проверка Интеллекта(4) — успех размещает элемент террейна размера 2; супер-успех — два таких, либо один размера 3.'},
+    gate:{name:'Врата', category:'Манифестация', text:'Стоимость 1–3 Очка Мотивации. Взаимодействие дальностью 6 на любого. На врага — встречная проверка Интеллекта: успех — недобровольная Телепортация (4" за потраченное Очко). На союзника — проверка Интеллекта(4): успех — Телепортация (4" за Очко).'},
+    shield_power:{name:'Щит', category:'Манифестация', text:'Стоимость 2 Очка Мотивации. Взаимодействие дальностью 6 на союзника: проверка Интеллекта(4) — успех даёт статус Защищён; супер-успех — Защищён ещё на одного союзника в 6".'}
+  },
+
+  weapons:{
+    pistol:{name:'Пистолет', kind:'ranged', range:12, damage:2, traits:['Бронебойность(1)','Лёгкое'], cost:1},
+    smg:{name:'Пистолет-пулемёт', kind:'ranged', range:12, damage:2, traits:['Очередь(3)','Лёгкое'], cost:1},
+    revolver:{name:'Револьвер', kind:'ranged', range:12, damage:3, traits:['Бронебойность(1)','Перезарядка(1)'], cost:1},
+    sawnoff:{name:'Обрез', kind:'ranged', range:8, damage:2, traits:['Меткое','Фокусированный огонь(0–6)','Перезарядка(1)'], cost:1},
+    assault:{name:'Автомат', kind:'ranged', range:18, damage:2, traits:['Пролом(4+)','Очередь(4)','Двуручное'], twohanded:true, cost:2},
+    shotgun:{name:'Дробовик', kind:'ranged', range:12, damage:2, traits:['Меткое','Фокусированный огонь(0–6)','Двуручное'], twohanded:true, cost:2},
+    line_rifle:{name:'Линейная винтовка', kind:'ranged', range:24, damage:3, traits:['Бронебойность(1)','Двуручное'], twohanded:true, cost:2},
+    sniper_rifle:{name:'Снайперская винтовка', kind:'ranged', range:36, damage:4, traits:['Бронебойность(2)','Перезарядка(1)','Двуручное'], twohanded:true, cost:3},
+    mg:{name:'Пулемёт', kind:'ranged', range:24, damage:3, traits:['Бронебойность(1)','Пролом(4+)','Очередь(5)','Требует Силу(д8)','Двуручное'], twohanded:true, reqStrength:'d8', cost:3},
+    am_rifle:{name:'Антиматериальная винтовка', kind:'ranged', range:24, damage:4, traits:['Пролом(6+)','Перезарядка(1)','Двуручное'], twohanded:true, cost:3, uniqueMax:1, faction:'organization'},
+
+    brass:{name:'Кастет', kind:'melee', range:1, damage:2, traits:['Лёгкое'], cost:1},
+    knife:{name:'Нож', kind:'melee', range:1, damage:1, traits:['Бронебойность(1)','Надёжное(1)','Лёгкое'], cost:1},
+    sword:{name:'Меч', kind:'melee', range:1, damage:3, traits:['Бронебойность(1)','Блок(1)'], cost:2},
+    axe:{name:'Топор', kind:'melee', range:1, damage:3, traits:['Бронебойность(2)'], cost:2},
+    mace:{name:'Булава', kind:'melee', range:1, damage:3, traits:['Пролом(5+)'], cost:2},
+    polearm:{name:'Древковое оружие', kind:'melee', range:2, damage:3, traits:['Бронебойность(1)'], cost:2},
+    hammer2h:{name:'Двуручный молот', kind:'melee', range:1, damage:4, traits:['Пролом(5+)','Отталкивание(2)','Требует Силу(д8)','Двуручное'], twohanded:true, reqStrength:'d8', cost:3},
+    polearm2h:{name:'Двуручное древковое оружие', kind:'melee', range:2, damage:4, traits:['Бронебойность(2)','Требует Силу(д8)','Двуручное'], twohanded:true, reqStrength:'d8', cost:3},
+    sword2h:{name:'Двуручный меч', kind:'melee', range:1, damage:4, traits:['Бронебойность(2)','Блок(1)','Требует Силу(д8)','Двуручное'], twohanded:true, reqStrength:'d8', cost:3},
+
+    giant_sword:{name:'Гигантский меч', kind:'melee', range:2, damage:4, traits:['Бронебойность(3)','Блок(1)','Требует Силу(д10)','Двуручное'], twohanded:true, reqStrength:'d10', cost:3, uniqueMax:2, faction:'heavy'},
+    rotary_cannon:{name:'Вращающаяся автоматическая пушка', kind:'ranged', range:24, damage:4, traits:['Бронебойность(1)','Пролом(4+)','Очередь(6)','Требует Силу(д10)','Двуручное'], twohanded:true, reqStrength:'d10', cost:3, uniqueMax:2, faction:'heavy'}
+  },
+
+  equipment:{
+    armor_light:{name:'Защитное снаряжение', group:'armor', armorBonus:1, cost:1, text:'Броня +1. Не сочетается с другим защитным снаряжением.'},
+    armor_heavy:{name:'Тяжёлое защитное снаряжение', group:'armor', armorBonus:2, reqStrength:'d8', cost:2, text:'Броня +2. Требует Силу(д8). Не сочетается с другим защитным снаряжением.'},
+    armor_super:{name:'Сверхтяжёлое защитное снаряжение', group:'armor', armorBonus:4, reqStrength:'d12', cost:3, text:'Броня +4. Требует Силу(д12). Не сочетается с другим защитным снаряжением.'},
+    backpack:{name:'Рюкзак', grantsSlot:1, cost:1, text:'Даёт 1 слот инвентаря.'},
+    medkit:{name:'Медицинский набор', slot:1, cost:1, text:'Взаимодействие «Полевая медицина»: проверка Интеллекта(3) — восстанавливает до 2 Здоровья дружественной/нейтральной цели.'},
+    mobility_gear:{name:'Средства вертикального перемещения', cost:1, text:'При добровольном перемещении штрафы за террейн снижаются на 1".'},
+    multitool:{name:'Мультитул', cost:1, text:'Сложность проверок при Взаимодействии с предметами/объектами −1.'},
+    targeting:{name:'Система наведения', slot:1, cost:1, text:'Взаимодействие на врага в ЛВ и 12": проверка Интеллекта(4) — цель получает Отмеченный.'},
+    flight_gear:{name:'Индивидуальное средство полёта', slot:1, cost:2, text:'При добровольном перемещении всегда используется тип Полёт.'},
+    camo:{name:'Камуфлирующее покрытие', cost:1, text:'Взаимодействие на себя: проверка Интеллекта(4) — получает статус Скрытый.'},
+    tac_shield:{name:'Тактический щит', slot:1, reqStrength:'d8', cost:2, text:'Занимает руку. В начале активации персонаж получает статус Защищён.'},
+    drone:{name:'Тактический дрон', slot:1, cost:2, uniqueMax:2, faction:'organization', text:'Взаимодействие на врага в 12": проверка Интеллекта(4) — цель теряет Скрытый и получает Отмеченный.'},
+    taser:{name:'Тазер', slot:1, cost:1, uniqueMax:2, faction:'organization', text:'Особое действие Стрельбы на врага в 8" и ЛВ: при успехе цель получает Замедление и Оглушение.'},
+
+    talisman:{name:'Защитный талисман', armorBonusExtra:1, cost:2, uniqueMax:3, faction:'gifted', text:'Броня +1 (складывается с обычным защитным снаряжением). Персонаж игнорирует спецправило Бронебойность у атак по нему.'},
+    amplifier:{name:'Амплификатор силы', slot:1, cost:1, uniqueMax:2, faction:'gifted', text:'Занимает руку. Траты Очков Мотивации на Сверхъестественные силы не учитываются в лимит эффектов Мотивации за активацию; сложность проверок Интеллекта для Сверхъестественных сил −1.'},
+    empowered_weapon:{name:'Оружие, наделённое силой', cost:2, uniqueMax:3, faction:'gifted', text:'Улучшение для ОДНОГО оружия персонажа (привяжите вручную): урон +1; ближнего боя — Бронебойность(1); стрелковое — Меткое.'},
+
+    unknown_armor:{name:'Неизвестный тип брони', group:'armor', armorBonus:1, cost:2, faction:'heavy', text:'Броня +1. Сложность проверок Брони никогда не выше 4.'}
+  },
+
+  glossary:{
+    ap:{name:'Бронебойность(X)', text:'уменьшает Броню цели на X на время атаки.'},
+    breach:{name:'Пролом(X)', text:'увеличивает сложность проверки Брони цели до X на время атаки.'},
+    burst:{name:'Очередь(X)', text:'если есть 2+ действия — тратит их все, меняет Урон оружия на X.'},
+    reliable:{name:'Надёжное(X)', text:'при промахе всё равно наносит X урона.'},
+    block:{name:'Блок(X)', text:'увеличивает Защиту персонажа в ближнем бою на X.'},
+    reload:{name:'Перезарядка(X)', text:'после Стрельбы — жетон Разряженного оружия(X); снимается X действиями Взаимодействия, пока висит — стрелять нельзя.'},
+    twohanded:{name:'Двуручное', text:'занимает 2 слота инвентаря и обе руки.'},
+    focusfire:{name:'Фокусированный огонь(X–Y)', text:'в пределах дистанции оружие получает Урон +1 и Надёжное(1).'},
+    accurate:{name:'Меткое', text:'игнорирует модификатор к Защите (не к Броне) от укрытия.'},
+    light:{name:'Лёгкое', text:'снижает штраф от Быстрого действия на 1.'},
+    reqstat:{name:'Требует Параметр(X)', text:'нельзя экипировать при значении параметра меньше X.'},
+    knockback:{name:'Отталкивание(X)', text:'при попадании после урона можно совершить Бросок цели на X.'}
+  }
+};
+
+var DIE_ORDER = ['d6','d8','d10','d12'];
+var STAT_KEYS = ['might','intellect','will','agility','fight','marksmanship'];
+var STAT_LABELS = {might:'Сила', intellect:'Интеллект', will:'Воля', agility:'Ловкость', fight:'Сражение', marksmanship:'Стрельба'};
+
+function dieIdx(d){ return DIE_ORDER.indexOf(d); }
+function uid(){ return 'u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+
+/* ------------------------------------------------------- EXAMPLE SQUAD ---- */
+
+function exampleUnits(){
+  return [
+    { id:uid(), roleId:'commander', name:'Рэйна «Феникс» Куроки', size:2,
+      stats:{might:'d6',intellect:'d10',will:'d6',agility:'d6',fight:'d8',marksmanship:'d10'},
+      archetypeAbilities:['zdorovyak','tactical_advantage'], anyAbilities:['command_tone'],
+      rangedWeapons:['assault'], meleeWeapons:[], equipment:['armor_light','drone'] },
+    { id:uid(), roleId:'veteran', name:'Мэй «Игла» Сато', size:2,
+      stats:{might:'d6',intellect:'d6',will:'d6',agility:'d10',fight:'d6',marksmanship:'d10'},
+      archetypeAbilities:['sniper_stance','steady_stance'], anyAbilities:[],
+      rangedWeapons:['am_rifle'], meleeWeapons:[], equipment:[] },
+    { id:uid(), roleId:'heavyVeteran', name:'Ирис «Титан» Волкова', size:3,
+      stats:{might:'d8',intellect:'d6',will:'d6',agility:'d6',fight:'d10',marksmanship:'d8'},
+      archetypeAbilities:['finishing_blow','ruthless'], anyAbilities:[],
+      rangedWeapons:['mg'], meleeWeapons:['hammer2h'], equipment:['armor_heavy','backpack'] },
+    { id:uid(), roleId:'veteran', name:'Аи «Шторм» Мидзуно', size:2,
+      stats:{might:'d6',intellect:'d6',will:'d6',agility:'d6',fight:'d10',marksmanship:'d10'},
+      archetypeAbilities:['duelist','ruthless'], anyAbilities:[],
+      rangedWeapons:['shotgun'], meleeWeapons:['sword'], equipment:['armor_light'] },
+    { id:uid(), roleId:'recruit', name:'Хана «Клевер» Ито', size:2,
+      stats:{might:'d6',intellect:'d8',will:'d6',agility:'d6',fight:'d8',marksmanship:'d6'},
+      archetypeAbilities:[], anyAbilities:[],
+      rangedWeapons:['pistol'], meleeWeapons:[], equipment:['armor_light','medkit'] }
+  ];
+}
+
+function defaultState(){
+  return { squadName:'ЧВК «Валькирия»', archetype:'organization', budget:60, units:exampleUnits(), squadId:null, tab:'builder' };
+}
+
+/* -------------------------------------------------------------- STATE ---- */
+
+// Вставьте сюда URL вашего развёрнутого Apps Script веб-приложения
+// (Развернуть -> Новое развёртывание -> Веб-приложение -> скопировать URL).
+// Пока он пуст или недоступен — сайт работает на встроенных данных ниже
+// (DEFAULT_DATA) в режиме «только чтение с последней сохранённой копии».
+var API_URL = '';
+
+var state = null;
+var liveData = null;      // данные, полученные с сервера (когда доступны)
+var dataIsLive = false;   // true, если liveData реально пришли из API_URL
+var mySquads = [];
+var identity = { name:'', code:'' };
+
+function data(){ return liveData || DEFAULT_DATA; }
+
+var LS_STATE_KEY = 'calamitycity_builder_state_v1';
+var LS_IDENTITY_KEY = 'calamitycity_builder_identity_v1';
+
+function persistHot(){
+  try{ localStorage.setItem(LS_STATE_KEY, JSON.stringify(state)); }catch(e){}
+}
+function loadPersistedState(){
+  try{
+    var raw = localStorage.getItem(LS_STATE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function persistIdentity(){
+  try{ localStorage.setItem(LS_IDENTITY_KEY, JSON.stringify(identity)); }catch(e){}
+}
+function loadPersistedIdentity(){
+  try{
+    var raw = localStorage.getItem(LS_IDENTITY_KEY);
+    if(raw) identity = JSON.parse(raw) || {name:'',code:''};
+  }catch(e){}
+}
+
+function setState(mutator, skipRender){
+  mutator(state);
+  persistHot();
+  if(!skipRender) renderAll();
+}
+
+function apiGet(params){
+  var url = API_URL + (API_URL.indexOf('?')===-1 ? '?' : '&') + new URLSearchParams(params||{}).toString();
+  return fetch(url).then(function(r){ return r.json(); });
+}
+function apiPost(payload){
+  // Тело отправляется как обычная строка (не application/json), чтобы
+  // браузер не делал CORS-preflight — Apps Script Web Apps его не обрабатывают.
+  return fetch(API_URL, { method:'POST', body:JSON.stringify(payload) }).then(function(r){ return r.json(); });
+}
+
+function renderDataBanner(){
+  var el = document.getElementById('data-banner');
+  if(!el) return;
+  if(!API_URL){
+    el.innerHTML = '<div class="data-banner offline">API не настроен — сайт показывает встроенные стартовые данные. Разверните Google Apps Script (см. README) и впишите его URL в переменную <code>API_URL</code> в index.html, чтобы подтягивались правки из таблицы и работали «Мои отряды».</div>';
+  } else if(!dataIsLive){
+    el.innerHTML = '<div class="data-banner offline">Не удалось связаться с таблицей данных — показаны встроенные значения на момент последней публикации сайта. Проверьте, что Apps Script развёрнут с доступом «Все», и обновите страницу.</div>';
+  } else {
+    el.innerHTML = '';
+  }
+}
+
+/* ---------------------------------------------------------- COMPUTE ---- */
+
+function currentArchetype(){ return data().archetypes[state.archetype]; }
+function role(unit){ return currentArchetype().roles[unit.roleId]; }
+function roleCategories(r){ return r.archetypeCategories || currentArchetype().archetypeCategories; }
+
+function statIncreasesUsed(unit){
+  var d = data(); var r = role(unit); var used = 0;
+  STAT_KEYS.forEach(function(k){
+    var baseline = (k==='might' && r.mightBaseline) ? r.mightBaseline : 'd6';
+    used += Math.max(0, dieIdx(unit.stats[k]) - dieIdx(baseline));
+  });
+  return used;
+}
+
+function weaponSlot(w){ return w.twohanded ? 2 : 1; }
+
+function computeUnit(unit){
+  var d = data(); var r = role(unit); var arch = currentArchetype();
+  var sizeBonus = (arch.sizeBonusRule && unit.size===arch.sizeBonusRule.size) ? arch.sizeBonusRule : null;
+  var defence = 4;
+  if(dieIdx(unit.stats.fight) >= 1) defence += 1;
+  if(dieIdx(unit.stats.agility) >= 1) defence += 1;
+
+  var armor = (r.builtinArmor||0) + (sizeBonus ? (sizeBonus.armor||0) : 0);
+  unit.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e){ if(e.group==='armor') armor += (e.armorBonus||0); if(e.armorBonusExtra) armor += e.armorBonusExtra; } });
+
+  var health = 2 + (r.builtinHealth||0) + (sizeBonus ? (sizeBonus.health||0) : 0);
+  STAT_KEYS.forEach(function(k){ var i=dieIdx(unit.stats[k]); if(i>=1) health+=1; if(i>=3) health+=1; });
+  if(unit.size===1) health -= 1; if(unit.size===3) health += 1;
+  unit.archetypeAbilities.concat(unit.anyAbilities).forEach(function(aid){ if(aid==='zdorovyak') health += 1; });
+
+  var speed = r.speedCapped ? 5 : (5 + (dieIdx(unit.stats.agility)>=2?1:0));
+
+  var slotsCap = 3;
+  unit.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e && e.grantsSlot) slotsCap += e.grantsSlot; });
+  unit.archetypeAbilities.concat(unit.anyAbilities).forEach(function(aid){ if(aid==='zdorovyak') slotsCap += 1; if(aid==='born_wrestler') slotsCap += 1; });
+
+  var slotsUsed = 0; var cost = r.cost;
+  unit.rangedWeapons.concat(unit.meleeWeapons).forEach(function(wid){ var w=d.weapons[wid]; if(w){ slotsUsed += weaponSlot(w); cost += w.cost; } });
+  unit.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e){ slotsUsed += (e.slot||0); cost += (e.cost||0); } });
+
+  return { defence:defence, armor:armor, health:health, speed:speed, slotsCap:slotsCap, slotsUsed:slotsUsed, cost:cost,
+    increasesUsed: statIncreasesUsed(unit), increasesAllowed: r.statIncreases };
+}
+
+function squadTotals(){
+  var d = data(); var totalCost = 0; var counts = {}; var seniorSum = 0; var noviceSum = 0;
+  var uniqueUsage = {};
+  var roles = currentArchetype().roles;
+  state.units.forEach(function(u){
+    var c = computeUnit(u);
+    totalCost += c.cost;
+    counts[u.roleId] = (counts[u.roleId]||0)+1;
+    var r = roles[u.roleId];
+    if(r){ if(r.tier==='senior') seniorSum++; if(r.tier==='novice') noviceSum++; }
+    u.rangedWeapons.concat(u.meleeWeapons).forEach(function(wid){ var w=d.weapons[wid]; if(w && w.uniqueMax) uniqueUsage[wid]=(uniqueUsage[wid]||0)+1; });
+    u.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e && e.uniqueMax) uniqueUsage[eid]=(uniqueUsage[eid]||0)+1; });
+  });
+  return { totalCost:totalCost, counts:counts, uniqueUsage:uniqueUsage, seniorSum:seniorSum, noviceSum:noviceSum };
+}
+
+function squadIssues(){
+  var t = squadTotals(); var d = data(); var roles = currentArchetype().roles; var issues = [];
+  var commanderCount = t.counts.commander||0;
+  if(commanderCount !== 1) issues.push({level:'danger', text:'В отряде должен быть ровно 1 Командир (сейчас '+commanderCount+').'});
+  Object.keys(roles).forEach(function(rid){
+    var r = roles[rid]; var count = t.counts[rid]||0;
+    if(count > r.maxCount) issues.push({level:'danger', text:'«'+r.name+'» больше лимита ('+r.maxCount+').'});
+  });
+  if(t.noviceSum > t.seniorSum) issues.push({level:'danger', text:'Новобранцев/Тяжёлых Новобранцев ('+t.noviceSum+') больше, чем Командир+Ветераны ('+t.seniorSum+').'});
+  if(t.totalCost > state.budget) issues.push({level:'danger', text:'Превышен бюджет: '+t.totalCost+' / '+state.budget+' Известности.'});
+  Object.keys(t.uniqueUsage).forEach(function(id){
+    var item = d.weapons[id] || d.equipment[id];
+    if(item && t.uniqueUsage[id] > item.uniqueMax) issues.push({level:'danger', text:'«'+item.name+'» превышает лимит на отряд ('+item.uniqueMax+').'});
+  });
+  state.units.forEach(function(u){
+    var c = computeUnit(u);
+    if(c.slotsUsed > c.slotsCap) issues.push({level:'warn', text:'«'+u.name+'»: занято слотов больше, чем есть ('+c.slotsUsed+'/'+c.slotsCap+').'});
+    if(c.increasesUsed > c.increasesAllowed) issues.push({level:'warn', text:'«'+u.name+'»: потрачено больше прокачек, чем разрешено.'});
+  });
+  return issues;
+}
+
+/* ------------------------------------------------------------ ACTIONS ---- */
+
+var App = {};
+window.App = App;
+
+App.setTab = function(tab){
+  state.tab = tab;
+  document.getElementById('view-builder').hidden = tab!=='builder';
+  document.getElementById('view-mine').hidden = tab!=='mine';
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.tab===tab ? 'true':'false'); });
+  if(tab==='mine') renderMine();
+};
+
+App.setSquadName = function(v){ state.squadName = v; persistHot(); };
+App.setBudget = function(v){ var n = parseInt(v,10); if(!isNaN(n) && n>0){ state.budget = n; renderAll(); } };
+
+App.toggleAddMenu = function(){
+  var el = document.getElementById('add-dropdown');
+  el.hidden = !el.hidden;
+};
+
+App.setArchetype = function(archId){
+  if(archId===state.archetype) return;
+  if(state.units.length>0 && !confirm('Роли и способности у архетипов разные — при смене список бойцов отряда очистится. Продолжить?')){
+    renderAll(); return;
+  }
+  state.archetype = archId;
+  state.units = [];
+  state.squadId = null;
+  persistHot();
+  renderAll();
+};
+
+App.addUnit = function(roleId){
+  var r = currentArchetype().roles[roleId];
+  var stats = {}; STAT_KEYS.forEach(function(k){ stats[k] = (k==='might' && r.mightBaseline) ? r.mightBaseline : 'd6'; });
+  var count = state.units.filter(function(u){return u.roleId===roleId;}).length;
+  setState(function(s){
+    s.units.push({ id:uid(), roleId:roleId, name:r.name+' '+(count+1), size:r.defaultSize, stats:stats,
+      archetypeAbilities:[], anyAbilities:[], rangedWeapons:[], meleeWeapons:[], equipment:[] });
+  });
+  document.getElementById('add-dropdown').hidden = true;
+};
+
+App.removeUnit = function(id){
+  if(!confirm('Убрать этого бойца из отряда?')) return;
+  setState(function(s){ s.units = s.units.filter(function(u){ return u.id!==id; }); });
+};
+
+App.renameUnit = function(id, name){
+  var u = state.units.find(function(u){return u.id===id;});
+  if(u) u.name = name;
+  persistHot();
+};
+
+App.setSize = function(id, size){
+  var u = state.units.find(function(u){return u.id===id;});
+  if(u) u.size = parseInt(size,10);
+  renderAll();
+};
+
+App.stepStat = function(id, key, dir){
+  var u = state.units.find(function(u){return u.id===id;});
+  if(!u) return;
+  var r = role(u);
+  var i = dieIdx(u.stats[key]);
+  var baseline = (key==='might' && r.mightBaseline) ? r.mightBaseline : 'd6';
+  if(dir>0){
+    if(i>=3) return;
+    if(statIncreasesUsed(u) >= r.statIncreases) return;
+    u.stats[key] = DIE_ORDER[i+1];
+  } else {
+    if(dieIdx(u.stats[key]) <= dieIdx(baseline)) return;
+    u.stats[key] = DIE_ORDER[i-1];
+  }
+  renderAll();
+};
+
+App.toggleAbility = function(unitId, slotType, abilityId, checked){
+  var u = state.units.find(function(u){return u.id===unitId;});
+  if(!u) return;
+  var r = role(u);
+  var list = slotType==='archetype' ? u.archetypeAbilities : u.anyAbilities;
+  var maxSlots = slotType==='archetype' ? r.archetypeAbilitySlots : r.anyAbilitySlots;
+  var otherList = slotType==='archetype' ? u.anyAbilities : u.archetypeAbilities;
+  if(checked){
+    if(otherList.indexOf(abilityId)!==-1) return;
+    if(list.length >= maxSlots) return;
+    list.push(abilityId);
+  } else {
+    var idx = list.indexOf(abilityId);
+    if(idx!==-1) list.splice(idx,1);
+  }
+  renderAll();
+};
+
+App.toggleWeapon = function(unitId, kind, weaponId, checked){
+  var u = state.units.find(function(u){return u.id===unitId;});
+  if(!u) return;
+  var d = data();
+  var key = kind==='ranged' ? 'rangedWeapons' : 'meleeWeapons';
+  var w = d.weapons[weaponId];
+  if(checked){
+    if(!factionOk(w)) return;
+    if(w.reqStrength && dieIdx(u.stats.might) < dieIdx(w.reqStrength)) return;
+    if(w.uniqueMax){
+      var used = 0;
+      state.units.forEach(function(uu){ if(uu.rangedWeapons.concat(uu.meleeWeapons).indexOf(weaponId)!==-1) used++; });
+      if(used >= w.uniqueMax) return;
+    }
+    if(w.twohanded){ u[key] = [weaponId]; }
+    else {
+      var hasTwoHanded = u[key].some(function(id){ var ww=d.weapons[id]; return ww && ww.twohanded; });
+      if(hasTwoHanded) u[key] = [];
+      if(u[key].length >= 2) return;
+      u[key].push(weaponId);
+    }
+  } else {
+    u[key] = u[key].filter(function(id){ return id!==weaponId; });
+  }
+  renderAll();
+};
+
+App.toggleEquipment = function(unitId, equipId, checked){
+  var u = state.units.find(function(u){return u.id===unitId;});
+  if(!u) return;
+  var d = data(); var e = d.equipment[equipId];
+  if(checked){
+    if(!factionOk(e)) return;
+    if(e.reqStrength && dieIdx(u.stats.might) < dieIdx(e.reqStrength)) return;
+    if(e.uniqueMax){
+      var used = 0;
+      state.units.forEach(function(uu){ if(uu.equipment.indexOf(equipId)!==-1) used++; });
+      if(used >= e.uniqueMax) return;
+    }
+    if(u.equipment.indexOf(equipId)===-1) u.equipment.push(equipId);
+  } else {
+    u.equipment = u.equipment.filter(function(id){ return id!==equipId; });
+  }
+  renderAll();
+};
+
+App.setArmor = function(unitId, equipId){
+  var u = state.units.find(function(u){return u.id===unitId;});
+  if(!u) return;
+  var d = data();
+  u.equipment = u.equipment.filter(function(id){ var e=d.equipment[id]; return !e || e.group!=='armor'; });
+  if(equipId){
+    var e = d.equipment[equipId];
+    if(!factionOk(e)){ renderAll(); return; }
+    if(e.reqStrength && dieIdx(u.stats.might) < dieIdx(e.reqStrength)){ renderAll(); return; }
+    u.equipment.push(equipId);
+  }
+  renderAll();
+};
+
+/* ------------------------------------------------------------- RENDER ---- */
+
+function fmtDie(d){ return d.replace('d','д'); }
+
+function renderSummary(){
+  var t = squadTotals();
+  var over = t.totalCost > state.budget;
+  var html = '';
+  html += '<div class="summary">';
+  html += '<div class="name-cell"><span class="label">Отряд</span><input value="'+esc(state.squadName)+'" oninput="App.setSquadName(this.value)"></div>';
+  html += '<div><span class="label">Архетип</span><select class="size-select" style="width:100%;" onchange="App.setArchetype(this.value)">'+
+    Object.keys(data().archetypes).map(function(aid){ var a=data().archetypes[aid]; return '<option value="'+aid+'" '+(state.archetype===aid?'selected':'')+'>'+esc(a.name)+'</option>'; }).join('')+
+    '</select></div>';
+  html += '<div><span class="label">Бойцов</span><span class="value num">'+state.units.length+'</span></div>';
+  html += '<div><span class="label">Известность</span><span class="value num">'+t.totalCost+' / <span class="budget-edit"><input type="number" value="'+state.budget+'" onchange="App.setBudget(this.value)"></span></span></div>';
+  html += '<div><span class="label">Статус</span>'+(squadIssues().filter(function(i){return i.level==="danger";}).length===0 ? '<span class="pill good">Легален</span>' : '<span class="pill danger">Есть нарушения</span>')+'</div>';
+  html += '</div>';
+  var issues = squadIssues();
+  if(issues.length){
+    html += '<div class="issues">';
+    issues.forEach(function(i){ html += '<div class="issue'+(i.level==='danger'?' danger':'')+'">'+esc(i.text)+'</div>'; });
+    html += '</div>';
+  }
+  return html;
+}
+
+function renderToolbar(){
+  var d = data(); var roles = currentArchetype().roles; var t = squadTotals();
+  var html = '<div class="toolbar">';
+  html += '<div class="add-menu"><button class="btn primary" onclick="App.toggleAddMenu()">+ Добавить бойца</button>';
+  html += '<div class="add-dropdown" id="add-dropdown" hidden>';
+  Object.keys(roles).forEach(function(rid){
+    var r = roles[rid]; var count = t.counts[rid]||0; var disabled = count>=r.maxCount;
+    html += '<button onclick="App.addUnit(\''+rid+'\')" '+(disabled?'disabled':'')+'><span>'+r.name+'</span><span class="cap">'+count+'/'+r.maxCount+' &middot; '+r.cost+' Изв.</span></button>';
+  });
+  html += '</div></div>';
+  html += '<button class="btn" onclick="App.saveSquad()">Сохранить отряд</button>';
+  html += '<button class="btn" onclick="App.newSquad()">Новый отряд</button>';
+  html += '<button class="btn ghost" onclick="App.printSquad()">Печать / PDF</button>';
+  html += '</div>';
+  return html;
+}
+
+function factionOk(item){ return !item.faction || item.faction===state.archetype; }
+
+function abilityCheckItem(unitId, slotType, abilityId, ab, checked, disabled, disabledReason, showCategory){
+  return '<label class="check-item'+(disabled&&!checked?' disabled':'')+'" title="'+esc(disabledReason||'')+'">'+
+    '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled&&!checked?'disabled':'')+' onchange="App.toggleAbility(\''+unitId+'\',\''+slotType+'\',\''+abilityId+'\',this.checked)">'+
+    '<span><span class="it-name">'+esc(ab.name)+'</span>'+(showCategory?' <span class="it-meta">['+esc(ab.category)+']</span>':'')+' <span class="it-meta">— '+esc(ab.text)+'</span></span></label>';
+}
+
+function renderUnit(u){
+  var d = data(); var r = role(u); var c = computeUnit(u);
+  var html = '<div class="unit">';
+  html += '<div class="unit-head">';
+  html += '<input class="uname" value="'+esc(u.name)+'" oninput="App.renameUnit(\''+u.id+'\',this.value)">';
+  html += '<span class="role-tag">'+r.name+'</span>';
+  html += '<select class="size-select" onchange="App.setSize(\''+u.id+'\',this.value)">';
+  for(var s=r.sizeMin; s<=r.sizeMax; s++) html += '<option value="'+s+'" '+(u.size===s?'selected':'')+'>Размер '+s+'</option>';
+  html += '</select>';
+  html += '<span class="unit-cost num">'+c.cost+' Изв.</span>';
+  html += '<button class="btn small ghost" onclick="App.removeUnit(\''+u.id+'\')">Удалить</button>';
+  html += '</div>';
+
+  html += '<div class="unit-body">';
+
+  html += '<div><div class="section-h">Параметры &middot; прокачек использовано '+c.increasesUsed+' / '+c.increasesAllowed+'</div><div class="stat-row">';
+  STAT_KEYS.forEach(function(k){
+    var baseline = (k==='might' && r.mightBaseline) ? r.mightBaseline : 'd6';
+    var canDown = dieIdx(u.stats[k]) > dieIdx(baseline);
+    var canUp = dieIdx(u.stats[k])<3 && c.increasesUsed < c.increasesAllowed;
+    html += '<div class="stat-box"><div class="sname">'+STAT_LABELS[k]+'</div><div class="sval">'+fmtDie(u.stats[k])+'</div>'+
+      '<div class="stepper"><button '+(canDown?'':'disabled')+' onclick="App.stepStat(\''+u.id+'\',\''+k+'\',-1)">&minus;</button>'+
+      '<button '+(canUp?'':'disabled')+' onclick="App.stepStat(\''+u.id+'\',\''+k+'\',1)">+</button></div></div>';
+  });
+  html += '</div></div>';
+
+  html += '<div class="derived-row">';
+  html += '<div class="derived-box"><div class="dname">Защита</div><div class="dval num">'+c.defence+'</div></div>';
+  html += '<div class="derived-box"><div class="dname">Броня</div><div class="dval num">'+c.armor+'</div></div>';
+  html += '<div class="derived-box"><div class="dname">Здоровье</div><div class="dval num">'+c.health+'</div></div>';
+  html += '<div class="derived-box"><div class="dname">Скорость</div><div class="dval num">'+c.speed+(r.speedCapped?' (потолок)':'')+'</div></div>';
+  html += '</div>';
+
+  if(r.builtinArmor || r.mightBaseline || r.builtinHealth){
+    html += '<div class="note-inline">Встроено ролью: '+(r.mightBaseline?'стартовая Сила '+fmtDie(r.mightBaseline)+'; ':'')+(r.builtinArmor?'Броня +'+r.builtinArmor+'; ':'')+(r.builtinHealth?'Здоровье +'+r.builtinHealth+'; ':'')+(r.speedCapped?'Скорость никогда не растёт':'')+'</div>';
+  }
+  var arch = currentArchetype();
+  if(arch.sizeBonusRule && u.size===arch.sizeBonusRule.size){
+    html += '<div class="note-inline">«Неостановимая сила» (Размер '+arch.sizeBonusRule.size+'): доп. Броня +'+(arch.sizeBonusRule.armor||0)+', Здоровье +'+(arch.sizeBonusRule.health||0)+' — уже учтено выше.</div>';
+  }
+
+  html += '<div class="two-col">';
+  html += '<div><div class="section-h">Способности архетипа ('+u.archetypeAbilities.length+'/'+r.archetypeAbilitySlots+')</div><div class="check-list">';
+  if(r.archetypeAbilitySlots===0){ html += '<div class="note-inline" style="padding:6px;">Эта роль не получает способностей.</div>'; }
+  else {
+    var cats = roleCategories(r);
+    cats.forEach(function(cat){
+      Object.keys(d.abilities).forEach(function(aid){
+        var ab = d.abilities[aid];
+        if(ab.category!==cat) return;
+        var checked = u.archetypeAbilities.indexOf(aid)!==-1;
+        var full = u.archetypeAbilities.length >= r.archetypeAbilitySlots;
+        html += abilityCheckItem(u.id,'archetype',aid,ab,checked, full, full?'Все слоты способностей заняты':'', cats.length>1);
+      });
+    });
+  }
+  if(r.note){ html += '<div class="note-inline" style="padding:4px 2px;">'+esc(r.note)+'</div>'; }
+  html += '</div></div>';
+
+  html += '<div><div class="section-h">Способность любой категории ('+u.anyAbilities.length+'/'+r.anyAbilitySlots+')</div><div class="check-list">';
+  if(r.anyAbilitySlots===0){ html += '<div class="note-inline" style="padding:6px;">Эта роль не получает такой слот.</div>'; }
+  else {
+    Object.keys(d.abilities).forEach(function(aid){
+      var ab = d.abilities[aid];
+      var checked = u.anyAbilities.indexOf(aid)!==-1;
+      var full = u.anyAbilities.length >= r.anyAbilitySlots;
+      html += abilityCheckItem(u.id,'any',aid,ab,checked, full, full?'Слот занят':'', true);
+    });
+  }
+  html += '</div></div>';
+  html += '</div>';
+
+  html += '<div class="two-col">';
+  html += '<div><div class="section-h">Дальнобойное оружие</div><div class="check-list">';
+  Object.keys(d.weapons).forEach(function(wid){
+    var w = d.weapons[wid]; if(w.kind!=='ranged') return; if(!factionOk(w)) return;
+    var checked = u.rangedWeapons.indexOf(wid)!==-1;
+    var reasons = [];
+    var strOk = !w.reqStrength || dieIdx(u.stats.might) >= dieIdx(w.reqStrength);
+    if(!strOk) reasons.push('нужна Сила '+fmtDie(w.reqStrength));
+    var uniqueOk = true;
+    if(w.uniqueMax){ var used=0; state.units.forEach(function(uu){ if(uu.rangedWeapons.indexOf(wid)!==-1) used++; }); uniqueOk = checked || used<w.uniqueMax; if(!uniqueOk) reasons.push('лимит '+w.uniqueMax+' на отряд исчерпан'); }
+    var disabled = !checked && (!strOk || !uniqueOk);
+    html += '<label class="check-item'+(disabled?' disabled':'')+'" title="'+esc(reasons.join('; '))+'">'+
+      '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' onchange="App.toggleWeapon(\''+u.id+'\',\'ranged\',\''+wid+'\',this.checked)">'+
+      '<span><span class="it-name">'+esc(w.name)+'</span><span class="it-meta"> — дальн.'+w.range+'&Prime; урон '+w.damage+', '+w.traits.join(', ')+(w.uniqueMax?' [уник. '+w.uniqueMax+'/отряд]':'')+'</span></span>'+
+      '<span class="cost-chip">'+w.cost+' Изв.</span></label>';
+  });
+  html += '</div></div>';
+
+  html += '<div><div class="section-h">Оружие ближнего боя</div><div class="check-list">';
+  html += '<div class="note-inline" style="padding:4px 6px;">Без выбора действует безоружная атака (дальн.1, урон1, Лёгкое).</div>';
+  Object.keys(d.weapons).forEach(function(wid){
+    var w = d.weapons[wid]; if(w.kind!=='melee') return; if(!factionOk(w)) return;
+    var checked = u.meleeWeapons.indexOf(wid)!==-1;
+    var reasons = [];
+    var strOk = !w.reqStrength || dieIdx(u.stats.might) >= dieIdx(w.reqStrength);
+    if(!strOk) reasons.push('нужна Сила '+fmtDie(w.reqStrength));
+    var disabled = !checked && !strOk;
+    html += '<label class="check-item'+(disabled?' disabled':'')+'" title="'+esc(reasons.join('; '))+'">'+
+      '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' onchange="App.toggleWeapon(\''+u.id+'\',\'melee\',\''+wid+'\',this.checked)">'+
+      '<span><span class="it-name">'+esc(w.name)+'</span><span class="it-meta"> — дальн.'+w.range+'&Prime; урон '+w.damage+', '+w.traits.join(', ')+'</span></span>'+
+      '<span class="cost-chip">'+w.cost+' Изв.</span></label>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+
+  var curArmor = u.equipment.find(function(id){ var e=d.equipment[id]; return e && e.group==='armor'; }) || '';
+  html += '<div class="two-col">';
+  html += '<div><div class="section-h">Защитное снаряжение</div>';
+  html += '<select class="armor-select" onchange="App.setArmor(\''+u.id+'\',this.value)"><option value="">— нет —</option>';
+  Object.keys(d.equipment).forEach(function(eid){
+    var e = d.equipment[eid]; if(e.group!=='armor') return; if(!factionOk(e) && curArmor!==eid) return;
+    var strOk = !e.reqStrength || dieIdx(u.stats.might) >= dieIdx(e.reqStrength);
+    html += '<option value="'+eid+'" '+(curArmor===eid?'selected':'')+' '+(!strOk?'disabled':'')+'>'+esc(e.name)+' (Броня +'+e.armorBonus+', '+e.cost+' Изв.'+(!strOk?', нужна Сила '+fmtDie(e.reqStrength):'')+')</option>';
+  });
+  html += '</select></div>';
+
+  html += '<div><div class="section-h">Прочее снаряжение</div><div class="check-list">';
+  Object.keys(d.equipment).forEach(function(eid){
+    var e = d.equipment[eid]; if(e.group==='armor') return; if(!factionOk(e)) return;
+    var checked = u.equipment.indexOf(eid)!==-1;
+    var reasons = [];
+    var strOk = !e.reqStrength || dieIdx(u.stats.might) >= dieIdx(e.reqStrength);
+    if(!strOk) reasons.push('нужна Сила '+fmtDie(e.reqStrength));
+    var uniqueOk = true;
+    if(e.uniqueMax){ var used=0; state.units.forEach(function(uu){ if(uu.equipment.indexOf(eid)!==-1) used++; }); uniqueOk = checked || used<e.uniqueMax; if(!uniqueOk) reasons.push('лимит '+e.uniqueMax+' на отряд исчерпан'); }
+    var disabled = !checked && (!strOk || !uniqueOk);
+    html += '<label class="check-item'+(disabled?' disabled':'')+'" title="'+esc(reasons.join('; '))+'">'+
+      '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' onchange="App.toggleEquipment(\''+u.id+'\',\''+eid+'\',this.checked)">'+
+      '<span><span class="it-name">'+esc(e.name)+'</span><span class="it-meta"> — '+esc(e.text||'')+(e.uniqueMax?' [уник. '+e.uniqueMax+'/отряд]':'')+'</span></span>'+
+      '<span class="cost-chip">'+e.cost+' Изв.</span></label>';
+  });
+  html += '</div></div>';
+  html += '</div>';
+
+  html += '<div class="unit-foot"><span class="slot-meter'+(c.slotsUsed>c.slotsCap?' over':'')+'">Слоты инвентаря: '+c.slotsUsed+' / '+c.slotsCap+'</span>'+
+    '<span class="note-inline">Уровень '+r.level+'</span></div>';
+
+  html += '</div></div>';
+  return html;
+}
+
+function renderRulesCard(){
+  var d = data(); var a = currentArchetype();
+  var html = '<div class="card"><h3 style="font-size:16px;margin-bottom:8px;">Спецправила архетипа «'+esc(a.name)+'»</h3>'+
+    (a.blurb ? '<div class="note-inline" style="padding:0 0 8px;">'+esc(a.blurb)+'</div>' : '')+
+    '<div class="rule-list">';
+  (a.specialRules||[]).forEach(function(r){ html += '<div><b>'+esc(r.name)+'</b> — '+esc(r.text)+'</div>'; });
+  html += '</div></div>';
+
+  html += '<div class="card"><h3 style="font-size:16px;margin-bottom:8px;">Справочник спецправил оружия</h3><dl class="glossary-grid">';
+  Object.keys(d.glossary).forEach(function(gid){ var g=d.glossary[gid]; html += '<dt>'+esc(g.name)+'</dt><dd>'+esc(g.text)+'</dd>'; });
+  html += '</dl></div>';
+
+  html += '<div class="card"><h3 style="font-size:16px;margin-bottom:8px;">Допущения билдера (стоит свериться с автором правил)</h3><div class="rule-list" style="font-size:12.5px;color:var(--text-muted);">'+
+    '<div>Тяжёлый Ветеран считается «Ветераном» для лимита Новобранцев и для спецправил «Специалисты широкого профиля» / «Цепочка командования».</div>'+
+    '<div>Лимиты на дальнобойное и ближнее Двуручное оружие независимы — можно одновременно нести двуручное дальнобойное и двуручное ближнего боя.</div>'+
+    '<div>Здоровье от «достижения д8/д12 в базовом параметре» считается отдельно для каждого параметра (кумулятивно), а не один раз за профиль.</div>'+
+    '<div>Броня, рюкзак, мультитул и подобное «пассивное» снаряжение не занимает слот инвентаря, если это не указано явно в тексте предмета.</div>'+
+    '</div></div>';
+  return html;
+}
+
+function renderAll(){
+  var el = document.getElementById('view-builder');
+  el.innerHTML = renderSummary() + renderToolbar() +
+    '<div style="display:flex;flex-direction:column;gap:14px;">' + state.units.map(renderUnit).join('') + '</div>' +
+    (state.units.length===0 ? '<div class="empty-note">Пока никого нет — добавьте первого бойца кнопкой выше.</div>' : '') +
+    renderRulesCard();
+}
+
+/* ---------------------------------------------------------- MY SQUADS ---- */
+
+App.setIdentityField = function(field, val){
+  identity[field] = val;
+  persistIdentity();
+};
+
+App.refreshMySquads = function(){ loadMySquads(); };
+
+App.saveSquad = function(){
+  if(!API_URL){ alert('API не настроен (пустой API_URL) — сохранение отрядов недоступно. См. README.'); return; }
+  if(!identity.name || !identity.code){ alert('Впишите имя и код доступа вверху вкладки «Мои отряды» (можно любые — это ваш личный ключ для сохранённых отрядов).'); App.setTab('mine'); return; }
+  var payload = {
+    action:'saveSquad', id: state.squadId||undefined, ownerName: identity.name, accessCode: identity.code,
+    squadName: state.squadName, archetype: state.archetype, budget: state.budget, units: state.units
+  };
+  apiPost(payload).then(function(res){
+    if(!res.ok){ alert('Не удалось сохранить: '+res.error); return; }
+    state.squadId = res.result.id;
+    persistHot();
+    alert('Отряд «'+state.squadName+'» сохранён.');
+    loadMySquads();
+  }).catch(function(e){ alert('Не удалось связаться с сервером: '+e); });
+};
+
+App.newSquad = function(){
+  if(!confirm('Начать новый пустой отряд? Несохранённые изменения текущего будут потеряны.')) return;
+  state = { squadName:'Новый отряд', archetype:'organization', budget:60, units:[], squadId:null, tab:'builder' };
+  persistHot(); renderAll();
+};
+
+App.loadSquad = function(id){
+  var sq = mySquads.find(function(s){return s.id===id;});
+  if(!sq) return;
+  state.squadName = sq.squadName; state.archetype = sq.archetype||'organization'; state.budget = sq.budget||60;
+  state.units = sq.units||[]; state.squadId = sq.id;
+  persistHot();
+  App.setTab('builder'); renderAll();
+};
+
+App.deleteSquad = function(id){
+  if(!confirm('Удалить сохранённый отряд?')) return;
+  apiPost({ action:'deleteSquad', id:id, ownerName:identity.name, accessCode:identity.code }).then(function(res){
+    if(!res.ok){ alert('Не удалось удалить: '+res.error); return; }
+    loadMySquads();
+  }).catch(function(e){ alert('Не удалось связаться с сервером: '+e); });
+};
+
+function loadMySquads(){
+  if(!API_URL || !identity.name || !identity.code){ mySquads = []; renderMine(); return; }
+  apiPost({ action:'listSquads', ownerName:identity.name, accessCode:identity.code }).then(function(res){
+    mySquads = (res.ok && res.squads) || [];
+    renderMine();
+  }).catch(function(){ mySquads = []; renderMine(); });
+}
+
+function renderMine(){
+  var el = document.getElementById('view-mine');
+  var html = '<div class="card"><h2 style="font-size:20px;margin-bottom:4px;">Мои отряды</h2>'+
+    '<p class="note-inline" style="margin-bottom:10px;">Отряды сохраняются по паре «имя + код доступа» — придумайте любые и запоминайте их, это не настоящая регистрация. Тот, кто знает вашу пару, сможет открыть и изменить эти отряды.</p>'+
+    '<div class="id-bar">'+
+    '<input placeholder="Имя" value="'+esc(identity.name)+'" oninput="App.setIdentityField(\'name\',this.value)">'+
+    '<input placeholder="Код доступа" value="'+esc(identity.code)+'" oninput="App.setIdentityField(\'code\',this.value)">'+
+    '<button class="btn small" onclick="App.refreshMySquads()">Показать мои отряды</button>'+
+    '</div></div>';
+
+  if(!API_URL){
+    html += '<div class="card empty-note">API не настроен — сохранение отрядов недоступно, пока не развёрнут Apps Script (см. README) и не вписан его URL в index.html.</div>';
+  } else if(!identity.name || !identity.code){
+    html += '<div class="card empty-note">Впишите имя и код доступа выше, затем нажмите «Показать мои отряды».</div>';
+  } else if(mySquads.length===0){
+    html += '<div class="card empty-note">Пока нет сохранённых отрядов под этой парой имя/код. Соберите отряд на вкладке «Билдер» и нажмите «Сохранить отряд».</div>';
+  } else {
+    html += '<div class="card"><div style="display:flex;flex-direction:column;gap:8px;">';
+    mySquads.forEach(function(sq){
+      var archName = (data().archetypes[sq.archetype]||{}).name || sq.archetype;
+      html += '<div class="squad-row"><span class="sn">'+esc(sq.squadName||'Без названия')+'</span>'+
+        '<span class="meta">'+esc(archName)+' &middot; '+(sq.units||[]).length+' бойцов &middot; бюджет '+(sq.budget||60)+'</span>'+
+        '<button class="btn small" onclick="App.loadSquad(\''+sq.id+'\')">Открыть</button>'+
+        '<button class="btn small ghost" onclick="App.deleteSquad(\''+sq.id+'\')">Удалить</button></div>';
+    });
+    html += '</div></div>';
+  }
+  el.innerHTML = html;
+}
+
+/* -------------------------------------------------------------- PRINT ---- */
+
+App.printSquad = function(){
+  var d = data();
+  var w = window.open('', '_blank');
+  if(!w){ alert('Браузер заблокировал всплывающее окно — разрешите всплывающие окна для печати.'); return; }
+  var css = 'body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;padding:24px;font-size:11pt;}'+
+    'h1{font-size:20pt;margin:0 0 2mm 0;} .meta{color:#555;margin-bottom:8mm;}'+
+    'table{width:100%;border-collapse:collapse;margin-bottom:4mm;}'+
+    'th,td{border:1px solid #999;padding:2mm 3mm;text-align:left;font-size:10pt;}'+
+    'th{background:#222;color:#fff;}'+
+    '.card{border:1.5px solid #222;border-radius:3mm;margin-bottom:6mm;overflow:hidden;break-inside:avoid;}'+
+    '.chead{background:#222;color:#fff;padding:3mm 5mm;display:flex;justify-content:space-between;}'+
+    '.cbody{padding:4mm 5mm;} ul{margin:2mm 0;padding-left:5mm;} li{margin-bottom:1.5mm;}'+
+    '.sub{font-weight:bold;text-transform:uppercase;font-size:9pt;color:#444;margin:3mm 0 1mm;}'+
+    '@page{size:A4;margin:14mm 12mm;}';
+  var html = '<title>'+esc(state.squadName)+'</title><style>'+css+'</style><h1>'+esc(state.squadName)+'</h1>'+
+    '<div class="meta">Архетип: Организация &middot; Известность: '+squadTotals().totalCost+' / '+state.budget+' &middot; Бойцов: '+state.units.length+'</div>';
+  state.units.forEach(function(u){
+    var c = computeUnit(u); var r = role(u);
+    html += '<div class="card"><div class="chead"><b>'+esc(u.name)+'</b><span>'+r.name+' &middot; Размер '+u.size+' &middot; '+c.cost+' Изв.</span></div><div class="cbody">';
+    html += '<table><tr>'+STAT_KEYS.map(function(k){return '<th>'+STAT_LABELS[k]+'</th>';}).join('')+'<th>Защита</th><th>Броня</th><th>Здоровье</th><th>Скорость</th></tr><tr>'+
+      STAT_KEYS.map(function(k){return '<td>'+fmtDie(u.stats[k])+'</td>';}).join('')+'<td>'+c.defence+'</td><td>'+c.armor+'</td><td>'+c.health+'</td><td>'+c.speed+'</td></tr></table>';
+    if(u.archetypeAbilities.length||u.anyAbilities.length){
+      html += '<div class="sub">Способности</div><ul>';
+      u.archetypeAbilities.concat(u.anyAbilities).forEach(function(aid){ var a=d.abilities[aid]; if(a) html += '<li><b>'+esc(a.name)+'</b> — '+esc(a.text)+'</li>'; });
+      html += '</ul>';
+    }
+    var gear = u.rangedWeapons.concat(u.meleeWeapons, u.equipment);
+    if(gear.length){
+      html += '<div class="sub">Снаряжение</div><ul>';
+      u.rangedWeapons.concat(u.meleeWeapons).forEach(function(wid){ var wp=d.weapons[wid]; if(wp) html += '<li><b>'+esc(wp.name)+'</b> — дальн.'+wp.range+'" урон '+wp.damage+', '+wp.traits.join(', ')+'</li>'; });
+      u.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e) html += '<li><b>'+esc(e.name)+'</b>'+(e.text?' — '+esc(e.text):'')+'</li>'; });
+      html += '</ul>';
+    }
+    html += '</div></div>';
+  });
+  w.document.write(html);
+  w.document.close();
+  setTimeout(function(){ try{ w.print(); }catch(e){} }, 300);
+};
+
+/* ------------------------------------------------------------ ESCAPING ---- */
+
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+/* --------------------------------------------------------------- INIT ---- */
+
+document.addEventListener('click', function(e){
+  var menu = document.getElementById('add-dropdown');
+  if(menu && !menu.hidden && !e.target.closest('.add-menu')) menu.hidden = true;
+});
+
+function boot(){
+  state = loadPersistedState() || defaultState();
+  loadPersistedIdentity();
+  renderDataBanner();
+  renderAll();
+  loadGameData();
+}
+
+function loadGameData(){
+  if(!API_URL){ renderDataBanner(); return; }
+  apiGet({ action:'data' }).then(function(res){
+    if(res && res.ok && res.data){
+      liveData = res.data;
+      dataIsLive = true;
+    } else {
+      dataIsLive = false;
+    }
+    renderDataBanner();
+    renderAll();
+    loadMySquads();
+  }).catch(function(){
+    dataIsLive = false;
+    renderDataBanner();
+  });
+}
+
+boot();
+
+})();
+</script>
+</body>
+</html>
