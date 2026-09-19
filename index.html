@@ -119,6 +119,7 @@
   .gear-table{ width:100%; border-collapse:collapse; font-size:12px; }
   .gear-table th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); border-bottom:1px solid var(--border); padding:4px 5px; }
   .gear-table td{ padding:4px 5px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .gear-table th, .gear-table td{ overflow-wrap:anywhere; }
   .gear-table tr:last-child td{ border-bottom:none; }
   .sheet-line{ font-size:12.5px; line-height:1.4; }
 
@@ -141,14 +142,6 @@
   .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:640px){ .two-col{ grid-template-columns:1fr; } }
 
-  .check-list{ display:flex; flex-direction:column; gap:4px; max-height:210px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius-sm); padding:6px; background:var(--surface); }
-  .check-item{ display:flex; align-items:flex-start; gap:7px; padding:5px 6px; border-radius:5px; font-size:12.5px; line-height:1.35; }
-  .check-item:hover{ background:var(--surface-2); }
-  .check-item input{ margin-top:3px; flex:none; }
-  .check-item .it-name{ font-weight:600; }
-  .check-item .it-meta{ color:var(--text-muted); }
-  .check-item.disabled{ opacity:.4; }
-  .check-item .cost-chip{ margin-left:auto; font-family:var(--font-mono); font-size:11px; color:var(--text-muted); white-space:nowrap; }
 
   select.armor-select{ width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 8px; background:var(--surface); color:var(--text); }
 
@@ -191,7 +184,30 @@
   .modal-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid var(--border); }
   .modal-head h3{ font-size:16px; }
   .modal-body{ padding:14px 16px 18px; overflow-y:auto; }
-  .modal-list{ max-height:none; border:none; padding:0; background:transparent; }
+  .cost-chip{ font-family:var(--font-mono); font-size:11px; color:var(--text-muted); white-space:nowrap; }
+
+  /* accordion pickers */
+  .acc-group{ border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px; background:var(--surface); overflow:hidden; }
+  .acc-children{ padding:6px 8px 8px 14px; display:flex; flex-direction:column; gap:6px; border-top:1px solid var(--border); background:var(--surface-2); }
+  .acc-item{ border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); overflow:hidden; }
+  .modal-body > .acc-item{ margin-bottom:6px; }
+  .acc-item.picked{ border-color:var(--accent); }
+  .acc-head{ display:flex; align-items:center; gap:8px; width:100%; text-align:left; border:none; background:transparent; color:var(--text); padding:9px 10px; font-size:13.5px; }
+  .acc-head:hover{ background:var(--surface-2); }
+  .acc-chev{ color:var(--text-muted); width:12px; flex:none; }
+  .acc-title{ font-weight:600; }
+  .acc-right{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+  .acc-meta{ font-size:12px; color:var(--text-muted); }
+  .acc-badge{ color:var(--accent-strong); font-weight:700; }
+  .acc-body{ padding:4px 12px 12px 30px; display:flex; flex-direction:column; gap:8px; }
+  .acc-text{ font-size:12.5px; line-height:1.45; color:var(--text-muted); }
+  .acc-stats{ display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12.5px; }
+  .acc-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .kw-row{ display:flex; flex-wrap:wrap; gap:6px; }
+  .kw{ font-size:12px; padding:2px 8px; border-radius:999px; background:var(--surface-3); border:1px solid var(--border); cursor:help; }
+  .kw.plain{ cursor:default; }
+  .kw-cell .kw{ display:inline-block; margin:1px 4px 1px 0; }
+  .kw-tip{ position:fixed; z-index:200; max-width:280px; background:var(--text); color:var(--bg); font-size:12px; line-height:1.4; padding:7px 10px; border-radius:var(--radius-sm); box-shadow:var(--shadow); pointer-events:none; }
 </style>
 </head>
 <body>
@@ -219,6 +235,8 @@
     <div class="modal-body" id="modal-body"></div>
   </div>
 </div>
+
+<div class="kw-tip" id="kw-tip" hidden></div>
 
 <script>
 (function(){
@@ -433,6 +451,8 @@ var dataIsLive = false;   // true, если liveData реально пришли
 var mySquads = [];
 var identity = { name:'', code:'' };
 var activeModal = null; // {kind, unitId?}
+var modalExpanded = {};
+var kwTip = document.getElementById('kw-tip');
 
 function data(){ return liveData || DEFAULT_DATA; }
 
@@ -781,17 +801,13 @@ function renderToolbar(){
 
 function factionOk(item){ return !item.faction || item.faction===state.archetype; }
 
-function abilityCheckItem(unitId, slotType, abilityId, ab, checked, disabled, disabledReason, showCategory){
-  return '<label class="check-item'+(disabled&&!checked?' disabled':'')+'" title="'+esc(disabledReason||'')+'">'+
-    '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled&&!checked?'disabled':'')+' onchange="App.toggleAbility(\''+unitId+'\',\''+slotType+'\',\''+abilityId+'\',this.checked)">'+
-    '<span><span class="it-name">'+esc(ab.name)+'</span>'+(showCategory?' <span class="it-meta">['+esc(ab.category)+']</span>':'')+' <span class="it-meta">— '+esc(ab.text)+'</span></span></label>';
-}
-
 /* ------------------------------------------------------------- MODALS ---- */
 
 App.openModal = function(kind, unitId){
   activeModal = { kind:kind, unitId:unitId };
+  modalExpanded = {};
   document.getElementById('modal-overlay').hidden = false;
+  document.getElementById('modal-body').scrollTop = 0;
   renderModalContent();
 };
 
@@ -829,98 +845,134 @@ function renderModalContent(){
   closeBtn.hidden = false;
   var u = state.units.find(function(uu){ return uu.id===activeModal.unitId; });
   if(!u){ App.closeModal(); return; }
+  kwTip.hidden = true;
+  var scrollTop = bodyEl.scrollTop;
   var d = data(); var r = role(u);
+  var kind = activeModal.kind;
   var title = ''; var body = '';
 
-  if(activeModal.kind==='archetypeAbility'){
-    title = 'Способности архетипа ('+u.archetypeAbilities.length+'/'+r.archetypeAbilitySlots+')';
-    body = '<div class="check-list modal-list">';
-    if(r.archetypeAbilitySlots===0){ body += '<div class="note-inline" style="padding:6px;">Эта роль не получает способностей.</div>'; }
-    else {
-      var cats = roleCategories(r);
-      cats.forEach(function(cat){
-        Object.keys(d.abilities).forEach(function(aid){
-          var ab = d.abilities[aid];
-          if(ab.category!==cat) return;
-          var checked = u.archetypeAbilities.indexOf(aid)!==-1;
-          var full = u.archetypeAbilities.length >= r.archetypeAbilitySlots;
-          body += abilityCheckItem(u.id,'archetype',aid,ab,checked, full, full?'Все слоты способностей заняты':'', cats.length>1);
-        });
+  if(kind==='archetypeAbility' || kind==='anyAbility'){
+    var isArch = kind==='archetypeAbility';
+    var list = isArch ? u.archetypeAbilities : u.anyAbilities;
+    var otherList = isArch ? u.anyAbilities : u.archetypeAbilities;
+    var slots = isArch ? r.archetypeAbilitySlots : r.anyAbilitySlots;
+    var slotType = isArch ? 'archetype' : 'any';
+    title = (isArch ? 'Способности архетипа' : 'Способность любой категории')+' ('+list.length+'/'+slots+')';
+    if(slots===0){
+      body += '<div class="note-inline">'+(isArch ? 'Эта роль не получает способностей.' : 'Эта роль не получает такой слот.')+'</div>';
+    } else {
+      var cats = isArch ? roleCategories(r).slice() : [];
+      if(!isArch){
+        Object.keys(d.abilities).forEach(function(aid){ var c = d.abilities[aid].category; if(cats.indexOf(c)===-1) cats.push(c); });
+      }
+      cats.forEach(function(cat, ci){
+        var ids = Object.keys(d.abilities).filter(function(aid){ return d.abilities[aid].category===cat; });
+        if(!ids.length) return;
+        var picked = ids.filter(function(aid){ return list.indexOf(aid)!==-1; }).length;
+        var gKey = 'g'+ci; var gOpen = !!modalExpanded[gKey];
+        body += '<div class="acc-group">'+accHead(gKey, gOpen, '<span class="acc-title">'+esc(cat)+'</span>', '<span class="acc-meta">'+ids.length+(picked ? ' · выбрано '+picked : '')+'</span>');
+        if(gOpen){
+          body += '<div class="acc-children">';
+          ids.forEach(function(aid){
+            var ab = d.abilities[aid];
+            var has = list.indexOf(aid)!==-1;
+            var aKey = 'a:'+aid; var aOpen = !!modalExpanded[aKey];
+            var reason = '';
+            if(!has){
+              if(otherList.indexOf(aid)!==-1) reason = 'Уже выбрана в другом слоте';
+              else if(list.length>=slots) reason = isArch ? 'Все слоты способностей заняты' : 'Слот занят';
+            }
+            body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead(aKey, aOpen, '<span class="acc-title">'+esc(ab.name)+'</span>', has ? '<span class="acc-badge">✓</span>' : '');
+            if(aOpen){
+              body += '<div class="acc-body"><div class="acc-text">'+esc(ab.text)+'</div>'+
+                accAction(has, reason, 'App.toggleAbility(\''+u.id+'\',\''+slotType+'\',\''+aid+'\',true)', 'App.toggleAbility(\''+u.id+'\',\''+slotType+'\',\''+aid+'\',false)')+'</div>';
+            }
+            body += '</div>';
+          });
+          body += '</div>';
+        }
+        body += '</div>';
       });
     }
-    if(r.note){ body += '<div class="note-inline" style="padding:4px 2px;">'+esc(r.note)+'</div>'; }
-    body += '</div>';
-  } else if(activeModal.kind==='anyAbility'){
-    title = 'Способность любой категории ('+u.anyAbilities.length+'/'+r.anyAbilitySlots+')';
-    body = '<div class="check-list modal-list">';
-    if(r.anyAbilitySlots===0){ body += '<div class="note-inline" style="padding:6px;">Эта роль не получает такой слот.</div>'; }
-    else {
-      Object.keys(d.abilities).forEach(function(aid){
-        var ab = d.abilities[aid];
-        var checked = u.anyAbilities.indexOf(aid)!==-1;
-        var full = u.anyAbilities.length >= r.anyAbilitySlots;
-        body += abilityCheckItem(u.id,'any',aid,ab,checked, full, full?'Слот занят':'', true);
-      });
-    }
-    body += '</div>';
-  } else if(activeModal.kind==='rangedWeapon'){
-    title = 'Дальнобойное оружие';
-    body = '<div class="check-list modal-list">';
+    if(isArch && r.note){ body += '<div class="note-inline" style="padding-top:8px;">'+esc(r.note)+'</div>'; }
+
+  } else if(kind==='rangedWeapon' || kind==='meleeWeapon'){
+    var isR = kind==='rangedWeapon';
+    var wKey = isR ? 'rangedWeapons' : 'meleeWeapons';
+    title = isR ? 'Дальнобойное оружие' : 'Оружие ближнего боя';
+    if(!isR){ body += '<div class="note-inline" style="padding-bottom:8px;">Без выбора действует безоружная атака (дальн.1, урон1, Лёгкое).</div>'; }
     Object.keys(d.weapons).forEach(function(wid){
-      var w = d.weapons[wid]; if(w.kind!=='ranged') return; if(!factionOk(w)) return;
-      var checked = u.rangedWeapons.indexOf(wid)!==-1;
+      var w = d.weapons[wid]; if(w.kind!==(isR ? 'ranged' : 'melee')) return; if(!factionOk(w)) return;
+      var has = u[wKey].indexOf(wid)!==-1;
       var reasons = [];
-      var strOk = !w.reqStrength || dieIdx(u.stats.might) >= dieIdx(w.reqStrength);
-      if(!strOk) reasons.push('нужна Сила '+fmtDie(w.reqStrength));
-      var uniqueOk = true;
-      if(w.uniqueMax){ var used=0; state.units.forEach(function(uu){ if(uu.rangedWeapons.indexOf(wid)!==-1) used++; }); uniqueOk = checked || used<w.uniqueMax; if(!uniqueOk) reasons.push('лимит '+w.uniqueMax+' на отряд исчерпан'); }
-      var disabled = !checked && (!strOk || !uniqueOk);
-      body += '<label class="check-item'+(disabled?' disabled':'')+'" title="'+esc(reasons.join('; '))+'">'+
-        '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' onchange="App.toggleWeapon(\''+u.id+'\',\'ranged\',\''+wid+'\',this.checked)">'+
-        '<span><span class="it-name">'+esc(w.name)+'</span><span class="it-meta"> — дальн.'+w.range+'&Prime; урон '+w.damage+', '+w.traits.join(', ')+(w.uniqueMax?' [уник. '+w.uniqueMax+'/отряд]':'')+'</span></span>'+
-        '<span class="cost-chip">'+w.cost+' Изв.</span></label>';
+      if(w.reqStrength && dieIdx(u.stats.might) < dieIdx(w.reqStrength)) reasons.push('нужна Сила '+fmtDie(w.reqStrength));
+      if(w.uniqueMax){
+        var used = 0; state.units.forEach(function(uu){ if(uu.rangedWeapons.indexOf(wid)!==-1 || uu.meleeWeapons.indexOf(wid)!==-1) used++; });
+        if(!has && used>=w.uniqueMax) reasons.push('лимит '+w.uniqueMax+' на отряд исчерпан');
+      }
+      var open = !!modalExpanded['w:'+wid];
+      body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead('w:'+wid, open, '<span class="acc-title">'+esc(w.name)+'</span>', (has ? '<span class="acc-badge">✓</span>' : '')+'<span class="cost-chip">'+w.cost+' Изв.</span>');
+      if(open){
+        body += '<div class="acc-body"><div class="acc-stats"><span>Дальность: <b>'+w.range+'&Prime;</b></span><span>Урон: <b>'+w.damage+'</b></span>'+(w.uniqueMax ? '<span>Уник.: <b>'+w.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
+          (w.traits.length ? '<div class="kw-row">'+kwChips(w.traits)+'</div>' : '')+
+          accAction(has, has ? '' : reasons.join('; '), 'App.toggleWeapon(\''+u.id+'\',\''+(isR ? 'ranged' : 'melee')+'\',\''+wid+'\',true)', 'App.toggleWeapon(\''+u.id+'\',\''+(isR ? 'ranged' : 'melee')+'\',\''+wid+'\',false)')+'</div>';
+      }
+      body += '</div>';
     });
-    body += '</div>';
-  } else if(activeModal.kind==='meleeWeapon'){
-    title = 'Оружие ближнего боя';
-    body = '<div class="check-list modal-list">';
-    body += '<div class="note-inline" style="padding:4px 6px;">Без выбора действует безоружная атака (дальн.1, урон1, Лёгкое).</div>';
-    Object.keys(d.weapons).forEach(function(wid){
-      var w = d.weapons[wid]; if(w.kind!=='melee') return; if(!factionOk(w)) return;
-      var checked = u.meleeWeapons.indexOf(wid)!==-1;
-      var reasons = [];
-      var strOk = !w.reqStrength || dieIdx(u.stats.might) >= dieIdx(w.reqStrength);
-      if(!strOk) reasons.push('нужна Сила '+fmtDie(w.reqStrength));
-      var disabled = !checked && !strOk;
-      body += '<label class="check-item'+(disabled?' disabled':'')+'" title="'+esc(reasons.join('; '))+'">'+
-        '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' onchange="App.toggleWeapon(\''+u.id+'\',\'melee\',\''+wid+'\',this.checked)">'+
-        '<span><span class="it-name">'+esc(w.name)+'</span><span class="it-meta"> — дальн.'+w.range+'&Prime; урон '+w.damage+', '+w.traits.join(', ')+'</span></span>'+
-        '<span class="cost-chip">'+w.cost+' Изв.</span></label>';
-    });
-    body += '</div>';
-  } else if(activeModal.kind==='equipment'){
+
+  } else if(kind==='equipment'){
     title = 'Прочее снаряжение';
-    body = '<div class="check-list modal-list">';
     Object.keys(d.equipment).forEach(function(eid){
       var e = d.equipment[eid]; if(e.group==='armor') return; if(!factionOk(e)) return;
-      var checked = u.equipment.indexOf(eid)!==-1;
+      var has = u.equipment.indexOf(eid)!==-1;
       var reasons = [];
-      var strOk = !e.reqStrength || dieIdx(u.stats.might) >= dieIdx(e.reqStrength);
-      if(!strOk) reasons.push('нужна Сила '+fmtDie(e.reqStrength));
-      var uniqueOk = true;
-      if(e.uniqueMax){ var used=0; state.units.forEach(function(uu){ if(uu.equipment.indexOf(eid)!==-1) used++; }); uniqueOk = checked || used<e.uniqueMax; if(!uniqueOk) reasons.push('лимит '+e.uniqueMax+' на отряд исчерпан'); }
-      var disabled = !checked && (!strOk || !uniqueOk);
-      body += '<label class="check-item'+(disabled?' disabled':'')+'" title="'+esc(reasons.join('; '))+'">'+
-        '<input type="checkbox" '+(checked?'checked':'')+' '+(disabled?'disabled':'')+' onchange="App.toggleEquipment(\''+u.id+'\',\''+eid+'\',this.checked)">'+
-        '<span><span class="it-name">'+esc(e.name)+'</span><span class="it-meta"> — '+esc(e.text||'')+(e.uniqueMax?' [уник. '+e.uniqueMax+'/отряд]':'')+'</span></span>'+
-        '<span class="cost-chip">'+e.cost+' Изв.</span></label>';
+      if(e.reqStrength && dieIdx(u.stats.might) < dieIdx(e.reqStrength)) reasons.push('нужна Сила '+fmtDie(e.reqStrength));
+      if(e.uniqueMax){
+        var used = 0; state.units.forEach(function(uu){ if(uu.equipment.indexOf(eid)!==-1) used++; });
+        if(!has && used>=e.uniqueMax) reasons.push('лимит '+e.uniqueMax+' на отряд исчерпан');
+      }
+      var open = !!modalExpanded['e:'+eid];
+      body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead('e:'+eid, open, '<span class="acc-title">'+esc(e.name)+'</span>', (has ? '<span class="acc-badge">✓</span>' : '')+'<span class="cost-chip">'+e.cost+' Изв.</span>');
+      if(open){
+        body += '<div class="acc-body"><div class="acc-text">'+esc(e.text||'')+'</div>'+
+          '<div class="acc-stats">'+(e.slot ? '<span>Слот инвентаря: <b>'+e.slot+'</b></span>' : '')+(e.reqStrength ? '<span>Сила: <b>'+fmtDie(e.reqStrength)+'</b></span>' : '')+(e.uniqueMax ? '<span>Уник.: <b>'+e.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
+          accAction(has, has ? '' : reasons.join('; '), 'App.toggleEquipment(\''+u.id+'\',\''+eid+'\',true)', 'App.toggleEquipment(\''+u.id+'\',\''+eid+'\',false)')+'</div>';
+      }
+      body += '</div>';
     });
-    body += '</div>';
   }
 
   titleEl.textContent = title;
   bodyEl.innerHTML = body;
+  bodyEl.scrollTop = scrollTop;
 }
+
+function accHead(key, open, left, right){
+  return '<button class="acc-head" onclick="App.toggleAcc(\''+key+'\')"><span class="acc-chev">'+(open ? '&#9662;' : '&#9656;')+'</span>'+left+'<span class="acc-right">'+(right||'')+'</span></button>';
+}
+
+function accAction(has, reason, addCall, removeCall){
+  if(has) return '<div class="acc-actions"><button class="btn small" onclick="'+removeCall+'">Убрать</button></div>';
+  return '<div class="acc-actions"><button class="btn small primary" '+(reason ? 'disabled' : '')+' onclick="'+addCall+'">Добавить</button>'+(reason ? '<span class="note-inline">'+esc(reason)+'</span>' : '')+'</div>';
+}
+
+function kwChips(traits){
+  var glossary = data().glossary || {};
+  function baseName(s){ return String(s).replace(/\(.*$/, '').trim(); }
+  return traits.map(function(t){
+    var base = baseName(t); var tip = '';
+    Object.keys(glossary).forEach(function(gid){
+      var g = glossary[gid]; var gb = baseName(g.name);
+      if(!tip && (gb===base || (base.indexOf('Требует')===0 && gb.indexOf('Требует')===0))) tip = g.name+' — '+g.text;
+    });
+    return '<span class="kw'+(tip ? '' : ' plain')+'"'+(tip ? ' data-tip="'+esc(tip)+'" tabindex="0"' : '')+'>'+esc(t)+'</span>';
+  }).join('');
+}
+
+App.toggleAcc = function(key){
+  modalExpanded[key] = !modalExpanded[key];
+  renderModalContent();
+};
 
 App.submitLogin = function(){
   var name = document.getElementById('login-name').value.trim();
@@ -976,7 +1028,7 @@ function renderUnit(u){
   } else {
     gearWeapons.forEach(function(wid){
       var w = d.weapons[wid]; if(!w) return;
-      html += '<tr><td>'+esc(w.name)+'</td><td>'+(w.kind==='ranged'?'Дальнобойное':'Ближний бой')+'</td><td>'+w.range+'&Prime;</td><td>'+w.damage+'</td><td>'+esc(w.traits.join(', '))+'</td></tr>';
+      html += '<tr><td>'+esc(w.name)+'</td><td>'+(w.kind==='ranged'?'Дальнобойное':'Ближний бой')+'</td><td>'+w.range+'&Prime;</td><td>'+w.damage+'</td><td class="kw-cell">'+kwChips(w.traits)+'</td></tr>';
     });
   }
   html += '</tbody></table></div>';
@@ -1137,6 +1189,7 @@ App.printSquad = function(){
     '.pleft{width:32mm;flex:none;display:flex;flex-direction:column;gap:2mm;font-size:9.5pt;}'+
     '.pleft div{border:1px solid #999;border-radius:1.5mm;padding:1.5mm 2.5mm;}'+
     '.pright{flex:1;min-width:0;}'+
+    '.pright table{table-layout:fixed;} .pright th,.pright td{font-size:9pt;padding:1.5mm 2mm;overflow-wrap:anywhere;vertical-align:top;}'+
     '.sub{font-weight:bold;text-transform:uppercase;font-size:9pt;color:#444;margin:3mm 0 1mm;}'+
     '@page{size:A4;margin:14mm 12mm;}';
   var html = '<meta charset="utf-8"><title>'+esc(state.squadName)+'</title><style>'+css+'</style><h1>'+esc(state.squadName)+'</h1>'+
@@ -1162,7 +1215,7 @@ App.printSquad = function(){
       '</div>';
     html += '<div class="pright">';
     var gearWeapons = u.rangedWeapons.concat(u.meleeWeapons);
-    html += '<table><tr><th>Название</th><th>Тип</th><th>Дальность</th><th>Урон</th><th>Спецправила</th></tr>';
+    html += '<table><colgroup><col style="width:24%"><col style="width:16%"><col style="width:13%"><col style="width:8%"><col style="width:39%"></colgroup><tr><th>Название</th><th>Тип</th><th>Дальность</th><th>Урон</th><th>Спецправила</th></tr>';
     if(gearWeapons.length===0){
       html += '<tr><td colspan="5">Безоружная атака — дальн.1" урон 1, Лёгкое</td></tr>';
     } else {
@@ -1199,6 +1252,19 @@ document.addEventListener('click', function(e){
   var menu = document.getElementById('add-dropdown');
   if(menu && !menu.hidden && !e.target.closest('.add-menu')) menu.hidden = true;
 });
+
+function showKwTip(el){
+  kwTip.textContent = el.getAttribute('data-tip');
+  kwTip.hidden = false;
+  var rc = el.getBoundingClientRect();
+  var w = kwTip.offsetWidth, h = kwTip.offsetHeight;
+  var left = Math.min(Math.max(8, rc.left + rc.width/2 - w/2), window.innerWidth - w - 8);
+  var top = rc.top - h - 8; if(top < 8) top = rc.bottom + 8;
+  kwTip.style.left = left+'px'; kwTip.style.top = top+'px';
+}
+document.addEventListener('mouseover', function(e){ var el = e.target.closest('.kw[data-tip]'); if(el) showKwTip(el); });
+document.addEventListener('mouseout', function(e){ if(e.target.closest('.kw[data-tip]')) kwTip.hidden = true; });
+document.addEventListener('click', function(e){ var el = e.target.closest('.kw[data-tip]'); if(el) showKwTip(el); else kwTip.hidden = true; });
 
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape') App.closeModal();
