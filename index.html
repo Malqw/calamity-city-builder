@@ -956,15 +956,21 @@ function accAction(has, reason, addCall, removeCall){
   return '<div class="acc-actions"><button class="btn small primary" '+(reason ? 'disabled' : '')+' onclick="'+addCall+'">Добавить</button>'+(reason ? '<span class="note-inline">'+esc(reason)+'</span>' : '')+'</div>';
 }
 
-function kwChips(traits){
+function glossaryFor(trait){
   var glossary = data().glossary || {};
   function baseName(s){ return String(s).replace(/\(.*$/, '').trim(); }
+  var base = baseName(trait);
+  var ids = Object.keys(glossary);
+  for(var i=0; i<ids.length; i++){
+    var g = glossary[ids[i]]; var gb = baseName(g.name);
+    if(gb===base || (base.indexOf('Требует')===0 && gb.indexOf('Требует')===0)) return g;
+  }
+  return null;
+}
+
+function kwChips(traits){
   return traits.map(function(t){
-    var base = baseName(t); var tip = '';
-    Object.keys(glossary).forEach(function(gid){
-      var g = glossary[gid]; var gb = baseName(g.name);
-      if(!tip && (gb===base || (base.indexOf('Требует')===0 && gb.indexOf('Требует')===0))) tip = g.name+' — '+g.text;
-    });
+    var g = glossaryFor(t); var tip = g ? g.name+' — '+g.text : '';
     return '<span class="kw'+(tip ? '' : ' plain')+'"'+(tip ? ' data-tip="'+esc(tip)+'" tabindex="0"' : '')+'>'+esc(t)+'</span>';
   }).join('');
 }
@@ -1191,6 +1197,8 @@ App.printSquad = function(){
     '.pright{flex:1;min-width:0;}'+
     '.pright table{table-layout:fixed;} .pright th,.pright td{font-size:9pt;padding:1.5mm 2mm;overflow-wrap:anywhere;vertical-align:top;}'+
     '.sub{font-weight:bold;text-transform:uppercase;font-size:9pt;color:#444;margin:3mm 0 1mm;}'+
+    '.ref-page{break-before:page;font-size:9pt;} .ref-page h1{font-size:15pt;} .ref-page .sub{margin:2mm 0 1mm;}'+
+    '.ref-list{column-count:2;column-gap:6mm;margin-bottom:3mm;} .ref-list p{margin:0 0 1.5mm;break-inside:avoid;line-height:1.3;} .ref-page .cat{color:#666;font-size:8pt;}'+
     '@page{size:A4;margin:14mm 12mm;}';
   var html = '<meta charset="utf-8"><title>'+esc(state.squadName)+'</title><style>'+css+'</style><h1>'+esc(state.squadName)+'</h1>'+
     '<div class="meta">Архетип: '+esc(currentArchetype().name)+' &middot; Известность: '+squadTotals().totalCost+' / '+state.budget+' &middot; Бойцов: '+state.units.length+'</div>';
@@ -1233,6 +1241,43 @@ App.printSquad = function(){
     html += '</div></div>'; // pbody, cbody
     html += '</div>'; // card
   });
+
+  var usedKw = []; var usedAbilities = []; var usedGear = [];
+  state.units.forEach(function(u){
+    u.equipment.forEach(function(eid){
+      var eq = d.equipment[eid];
+      if(eq && eq.group!=='armor' && !eq.grantsSlot && usedGear.indexOf(eid)===-1) usedGear.push(eid);
+    });
+    u.rangedWeapons.concat(u.meleeWeapons).forEach(function(wid){
+      var wp = d.weapons[wid]; if(!wp) return;
+      wp.traits.forEach(function(t){
+        var g = glossaryFor(t);
+        if(g && g.name.indexOf('Требует')!==0 && usedKw.indexOf(g)===-1) usedKw.push(g);
+      });
+    });
+    u.archetypeAbilities.concat(u.anyAbilities).forEach(function(aid){
+      if(d.abilities[aid] && usedAbilities.indexOf(aid)===-1) usedAbilities.push(aid);
+    });
+  });
+  if(usedKw.length || usedAbilities.length || usedGear.length){
+    html += '<div class="ref-page"><h1>Справочник ростера</h1>';
+    if(usedKw.length){
+      html += '<div class="sub">Ключевые слова</div><div class="ref-list">';
+      usedKw.forEach(function(g){ html += '<p><b>'+esc(g.name)+'</b> — '+esc(g.text)+'</p>'; });
+      html += '</div>';
+    }
+    if(usedAbilities.length){
+      html += '<div class="sub">Способности</div><div class="ref-list">';
+      usedAbilities.forEach(function(aid){ var a = d.abilities[aid]; html += '<p><b>'+esc(a.name)+'</b> <span class="cat">['+esc(a.category)+']</span> — '+esc(a.text)+'</p>'; });
+      html += '</div>';
+    }
+    if(usedGear.length){
+      html += '<div class="sub">Снаряжение</div><div class="ref-list">';
+      usedGear.forEach(function(eid){ var e = d.equipment[eid]; html += '<p><b>'+esc(e.name)+'</b> — '+esc(e.text||'')+'</p>'; });
+      html += '</div>';
+    }
+    html += '</div>';
+  }
   w.document.write(html);
   w.document.close();
   setTimeout(function(){ try{ w.print(); }catch(e){} }, 300);
