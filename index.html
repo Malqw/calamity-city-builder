@@ -143,8 +143,6 @@
   @media (max-width:640px){ .two-col{ grid-template-columns:1fr; } }
 
 
-  select.armor-select{ width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:7px 8px; background:var(--surface); color:var(--text); }
-
   /* glossary / rules card */
   .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; }
   .glossary-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; font-size:12.5px; }
@@ -176,7 +174,6 @@
   /* edit actions (open picker modals) */
   .edit-actions{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
   .edit-armor{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-  .edit-armor select{ min-width:220px; }
 
   /* modal */
   .modal-overlay{ position:fixed; inset:0; background:rgba(20,24,12,.55); display:flex; align-items:center; justify-content:center; z-index:100; padding:16px; }
@@ -321,26 +318,31 @@ var DEFAULT_DATA = {
     born_wrestler:{name:'Рестлер по призванию', category:'Мощь', text:'+1 слот инвентаря. Особое Взаимодействие дальностью 1 на врага равного/меньшего размера: встречная проверка Силы (+2 если цель меньше) — успех: Бросок цели на дистанцию = максимум Силы; супер-успех: урон столкновения +1.'},
     ramming_blow:{name:'Таранный удар', category:'Мощь', text:'Если атака Сражения сняла ≥2 Здоровья — можно совершить Бросок цели на 3".'},
     crushing_blows:{name:'Дробящие удары', category:'Мощь', text:'Атака Сражения оружием с Требует Силу, снявшая ≥2 Здоровья — цель проходит проверку Воли(4) или получает Оглушение.'},
+    steel_muscles:{name:'Стальные мышцы', category:'Мощь', text:'Требует Силу д10 или более. Оружие без требований к Силе или с требованиями к Силе ниже вашего параметра Силы теперь занимает одну руку и для любых способностей не считается Двуручным для этого персонажа. Также оружие в базе не имеющее спецправила Двуручное теперь считается Лёгким для этого персонажа.'},
 
     tactical_advantage:{name:'Тактическое преимущество', category:'Стратегия', text:'Взаимодействие дальностью 6" на дружественного: проверка Интеллекта(4) — успех: Ожидание; супер-успех: ещё один дружественный в 6" получает Быстрое Ожидание.'},
     part_of_plan:{name:'Часть плана', category:'Стратегия', text:'Взаимодействие дальностью 12" на врага в ЛВ: встречная проверка Интеллекта — успех: недобровольное Передвижение цели (без падения); супер-успех: цель также Оглушена.'},
     outstanding_mind:{name:'Выдающийся ум', category:'Стратегия', text:'Проверка Интеллекта с супер-успехом — быстрое действие Взаимодействия или статус Быстрое Ожидание.'},
     cunning:{name:'Коварный', category:'Стратегия', text:'При ничьей в броске инициативы — вы выигрываете (если у обоих есть Коварный — всё ещё ничья).'},
+    known_location:{name:'Знание местности', category:'Стратегия', text:'В начале фазы Размещения вы можете выбрать: ваша зона расстановки увеличивается на 2 дюйма ИЛИ вы можете немедленно разместить одного персонажа в пределах 6 от вашей зоны расстановки. Если в вашем отряде несколько персонажей с Знанием местности — вы не можете дублировать эти эффекты, но можете использовать оба.'},
 
     command_tone:{name:'Командный тон', category:'Вдохновение', text:'Только лидер отряда или персонаж с Героическим броском. Взаимодействие дальностью 6" на дружественного: проверка Воли(4) — успех: цель немедленно действует; супер-успех: применивший получает быстрое действие.'},
     inspiring_presence:{name:'Вдохновляющее присутствие', category:'Вдохновение', text:'Супер-успех на стандартном действии этого персонажа — отряд получает 1 Очко Мотивации.'},
     heroic_example:{name:'Героический пример', category:'Вдохновение', text:'Первое за бой использование Последнего Шанса этим персонажем — дружественный в 12" снимает Жетон Активации.'},
     grim_resolve:{name:'Мрачная решимость', category:'Вдохновение', text:'В начале активации можно потерять до 2 Здоровья и получить до 2 быстрых действий (нельзя при Здоровье ≤2).'},
+    indomitable:{name:'Несгибаемый', category:'Вдохновение', text:'Стоимость: 1 Очко Мотивации. Когда ваш персонаж должен получить статус Тяжело раненный - вы можете пройти проверку Воли со сложностью 4. Если проверка успешна - персонаж не получает статус Тяжело ранен и его значение Здоровья становится 1.'},
 
-    ruthless:{name:'Безжалостный', category:'Беспощадность', text:'Против персонажа с Жетоном активации оружие получает Надёжное(1) и Бронебойность(1).'},
-    duelist:{name:'Дуэлянт', category:'Беспощадность', text:'Оружие персонажа получает Блок(1).'},
+    ruthless:{name:'Безжалостный', category:'Беспощадность', text:'Если персонаж использует действие Сражения против персонажа, у которого есть Жетон активации - оружие персонажа получает Надёжное(2) и Бронебойность(1).'},
+    duelist:{name:'Дуэлянт', category:'Беспощадность', text:'Оружие ближнего боя персонажа получает Блок(1). Пока персонаж находится в зоне ближнего боя враждебного персонажа - его Блок также даёт штрафы на все проверки Стрельбы по нему.'},
     counterattack:{name:'Контрудар', category:'Беспощадность', text:'Враг заявил этого персонажа целью Сражения (до проверки) — персонаж получает Быстрое Ожидание(Сражение).'},
     finishing_blow:{name:'Добивающий удар', category:'Беспощадность', text:'Атака Сражения ввела врага в Тяжёлое ранение — проверка Сражения(4): успех — враг удалён с поля, Выбывший из боя.'},
+    wirlwind:{name:'Вихрь', category:'Беспощадность', text:'Раз за Противостояние. Персонаж может раз за противостояние заявить специальное действие Сражения: Вихрь. Проведите проверку Сражения против вашей цели атаки. В случае успеха после завершения атаки все персонажи в вашей зоне ближнего боя получают 2 урона. В случае супер-успеха - они вместо этого получают 3 урона. Этот урон наследует Бронебойность и Пролом оригинальной атаки. Такое действие может быть только добровольным.'},
 
     sniper_stance:{name:'Снайперская позиция', category:'Точность', text:'На террейне своего размера или больше — стрелковое оружие получает Меткое и Надёжное(1).'},
     relentless_barrage:{name:'Неистовый залп', category:'Точность', text:'При Стрельбе с Очередь(X) — можно увеличить X на 2, тогда оружие получает жетон Разряженного оружия(1).'},
     quick_reload:{name:'Быстрая перезарядка', category:'Точность', text:'После действия Рывка — быстрое действие Взаимодействия только на перезарядку оружия.'},
     steady_stance:{name:'Устойчивое положение', category:'Точность', text:'Не двигался и не делал Рывок в активацию — в конце получает Ожидание(Стрельба).'},
+    gunkata:{name:'Ганката', category:'Точность', text:'Персонаж игнорирует штраф за стрельбу в зоне ближнего боя противника, если он выбирает целью этого противника.'},
 
     extra_limb:{name:'Ещё одна конечность', category:'Больше чем человек', text:'Персонаж получает ещё одну руку и 1 слот инвентаря. Можно взять несколько раз.'},
     winged:{name:'Крылатый', category:'Больше чем человек', text:'Персонаж получает тип передвижения Полёт.'},
@@ -430,11 +432,40 @@ var STAT_KEYS = ['might','intellect','will','agility','fight','marksmanship'];
 var STAT_LABELS = {might:'Сила', intellect:'Интеллект', will:'Воля', agility:'Ловкость', fight:'Сражение', marksmanship:'Стрельба'};
 var STAT_SHEET_ORDER = ['marksmanship','fight','might','intellect','will','agility'];
 
+// Прогрессия персонажа по опыту (см. диздок, раздел «Прогрессия персонажа»).
+// bonus: 'stat' — прокачка базового параметра, 'ability' — способность архетипа,
+// 'any' — способность любой категории, 'choice' — игрок выбирает stat или ability,
+// 'ability_heroic' — способность архетипа + Героический бросок.
+var LEVEL_TABLE = {
+  2:{xp:2, bonus:'stat', known:1},
+  3:{xp:2, bonus:'choice', known:1},
+  4:{xp:2, bonus:'ability', known:1},
+  5:{xp:2, bonus:'stat', known:1},
+  6:{xp:3, bonus:'choice', known:1},
+  7:{xp:3, bonus:'any', known:2},
+  8:{xp:3, bonus:'stat', known:1},
+  9:{xp:3, bonus:'choice', known:1},
+  10:{xp:3, bonus:'ability_heroic', known:3},
+  11:{xp:4, bonus:'stat', known:1},
+  12:{xp:4, bonus:'choice', known:1},
+  13:{xp:4, bonus:'ability', known:1},
+  14:{xp:4, bonus:'any', known:2},
+  15:{xp:4, bonus:'choice', known:1},
+  16:{xp:4, bonus:'ability', known:1}
+};
+var LEVEL_BONUS_LABEL = {
+  stat:'Повышение базового параметра',
+  ability:'Способность архетипа',
+  any:'Способность любой категории',
+  ability_heroic:'Способность архетипа + Героический бросок'
+};
+
 function dieIdx(d){ return DIE_ORDER.indexOf(d); }
 function uid(){ return 'u'+Math.random().toString(36).slice(2,10)+Date.now().toString(36); }
+function unitLevel(u){ return u.level || role(u).level; }
 
 function defaultState(){
-  return { squadName:'Новый отряд', archetype:'organization', budget:60, units:[], squadId:null, tab:'builder' };
+  return { squadName:'Новый отряд', archetype:'organization', budget:60, units:[], arsenal:[], campaignXp:0, squadId:null, tab:'builder' };
 }
 
 /* -------------------------------------------------------------- STATE ---- */
@@ -512,6 +543,8 @@ function renderDataBanner(){
 function currentArchetype(){ return data().archetypes[state.archetype]; }
 function role(unit){ return currentArchetype().roles[unit.roleId]; }
 function roleCategories(r){ return r.archetypeCategories || currentArchetype().archetypeCategories; }
+function archSlots(u,r){ return r.archetypeAbilitySlots + (u.bonusArchetype||0); }
+function anySlots(u,r){ return r.anyAbilitySlots + (u.bonusAny||0); }
 
 function statIncreasesUsed(unit){
   var d = data(); var r = role(unit); var used = 0;
@@ -524,6 +557,56 @@ function statIncreasesUsed(unit){
 
 function weaponSlot(w){ return w.twohanded ? 2 : 1; }
 
+/* ------------------------------------------------------------ ARSENAL ---- */
+// Оружие/снаряжение хранится в state.arsenal как отдельные экземпляры
+// {id, itemId, kind:'ranged'|'melee'|'equipment', ownerId:null|unitId}.
+// Пока экземпляр не выдан персонажу (ownerId===null) — он не входит в Известность
+// отряда, это «трофейный» запас. Один и тот же itemId может встречаться несколько
+// раз — так на персонаже можно закрепить два одинаковых предмета.
+
+function arsenalItemsOf(unitId, kind){
+  return state.arsenal.filter(function(it){ return it.ownerId===unitId && (!kind || it.kind===kind); });
+}
+function catalogDef(it){ var d = data(); return it.kind==='equipment' ? d.equipment[it.itemId] : d.weapons[it.itemId]; }
+function itemSlotCost(def, kind){ return kind==='equipment' ? (def.slot||0) : weaponSlot(def); }
+function canEquip(def, unit){
+  if(!factionOk(def)) return false;
+  if(def.reqStrength && dieIdx(unit.stats.might) < dieIdx(def.reqStrength)) return false;
+  return true;
+}
+// Причины, по которым юнит СЕЙЧАС не может нести ещё один экземпляр предмета.
+// Лимита «рук»/двуручности больше нет (осознанное решение) — единственные
+// ограничения: требование параметра, «не сочетается с другой бронёй» (это
+// правило самого предмета, не рук) и нехватка слотов инвентаря. Ничего не
+// вытесняется автоматически — если не помещается, просто нельзя взять.
+function fitReasons(def, kind, unit){
+  var reasons = [];
+  if(def.reqStrength && dieIdx(unit.stats.might) < dieIdx(def.reqStrength)) reasons.push('нужна Сила '+fmtDie(def.reqStrength));
+  if(def.group==='armor'){
+    var hasArmor = arsenalItemsOf(unit.id,'equipment').some(function(x){ var od=data().equipment[x.itemId]; return od && od.group==='armor'; });
+    if(hasArmor) reasons.push('уже есть другое защитное снаряжение — сначала уберите его');
+  }
+  var addSlots = itemSlotCost(def, kind);
+  if(addSlots > 0){
+    var c = computeUnit(unit);
+    if(c.slotsUsed + addSlots > c.slotsCap) reasons.push('не хватит слотов инвентаря ('+c.slotsUsed+'/'+c.slotsCap+')');
+  }
+  return reasons;
+}
+function canEquipNow(def, kind, unit){
+  return factionOk(def) && fitReasons(def, kind, unit).length===0;
+}
+function assignToUnit(it, unit){
+  var def = catalogDef(it);
+  if(!canEquipNow(def, it.kind, unit)) return false;
+  it.ownerId = unit.id;
+  return true;
+}
+
+function factionOk(item){ return !item.faction || item.faction===state.archetype; }
+
+/* ---------------------------------------------------------------------- */
+
 function computeUnit(unit){
   var d = data(); var r = role(unit); var arch = currentArchetype();
   var sizeBonus = (arch.sizeBonusRule && unit.size===arch.sizeBonusRule.size) ? arch.sizeBonusRule : null;
@@ -531,8 +614,11 @@ function computeUnit(unit){
   if(dieIdx(unit.stats.fight) >= 1) defence += 1;
   if(dieIdx(unit.stats.agility) >= 1) defence += 1;
 
+  var ownedEquip = arsenalItemsOf(unit.id, 'equipment');
+  var ownedWeapons = arsenalItemsOf(unit.id, 'ranged').concat(arsenalItemsOf(unit.id, 'melee'));
+
   var armor = (r.builtinArmor||0) + (sizeBonus ? (sizeBonus.armor||0) : 0);
-  unit.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e){ if(e.group==='armor') armor += (e.armorBonus||0); if(e.armorBonusExtra) armor += e.armorBonusExtra; } });
+  ownedEquip.forEach(function(it){ var e=d.equipment[it.itemId]; if(e){ if(e.group==='armor') armor += (e.armorBonus||0); if(e.armorBonusExtra) armor += e.armorBonusExtra; } });
 
   var health = 2 + (r.builtinHealth||0) + (sizeBonus ? (sizeBonus.health||0) : 0);
   STAT_KEYS.forEach(function(k){ var i=dieIdx(unit.stats[k]); if(i>=1) health+=1; if(i>=3) health+=1; });
@@ -542,15 +628,15 @@ function computeUnit(unit){
   var speed = r.speedCapped ? 5 : (5 + (dieIdx(unit.stats.agility)>=2?1:0));
 
   var slotsCap = 3;
-  unit.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e && e.grantsSlot) slotsCap += e.grantsSlot; });
+  ownedEquip.forEach(function(it){ var e=d.equipment[it.itemId]; if(e && e.grantsSlot) slotsCap += e.grantsSlot; });
   unit.archetypeAbilities.concat(unit.anyAbilities).forEach(function(aid){ if(aid==='zdorovyak') slotsCap += 1; if(aid==='born_wrestler') slotsCap += 1; });
 
-  var slotsUsed = 0; var cost = r.cost;
-  unit.rangedWeapons.concat(unit.meleeWeapons).forEach(function(wid){ var w=d.weapons[wid]; if(w){ slotsUsed += weaponSlot(w); cost += w.cost; } });
-  unit.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e){ slotsUsed += (e.slot||0); cost += (e.cost||0); } });
+  var slotsUsed = 0; var cost = r.cost + (unit.knownBonus||0);
+  ownedWeapons.forEach(function(it){ var w=d.weapons[it.itemId]; if(w){ slotsUsed += weaponSlot(w); cost += w.cost; } });
+  ownedEquip.forEach(function(it){ var e=d.equipment[it.itemId]; if(e){ slotsUsed += (e.slot||0); cost += (e.cost||0); } });
 
   return { defence:defence, armor:armor, health:health, speed:speed, slotsCap:slotsCap, slotsUsed:slotsUsed, cost:cost,
-    increasesUsed: statIncreasesUsed(unit), increasesAllowed: r.statIncreases };
+    increasesUsed: statIncreasesUsed(unit), increasesAllowed: r.statIncreases + (unit.bonusStat||0) };
 }
 
 function squadTotals(){
@@ -563,8 +649,10 @@ function squadTotals(){
     counts[u.roleId] = (counts[u.roleId]||0)+1;
     var r = roles[u.roleId];
     if(r){ if(r.tier==='senior') seniorSum++; if(r.tier==='novice') noviceSum++; }
-    u.rangedWeapons.concat(u.meleeWeapons).forEach(function(wid){ var w=d.weapons[wid]; if(w && w.uniqueMax) uniqueUsage[wid]=(uniqueUsage[wid]||0)+1; });
-    u.equipment.forEach(function(eid){ var e=d.equipment[eid]; if(e && e.uniqueMax) uniqueUsage[eid]=(uniqueUsage[eid]||0)+1; });
+  });
+  state.arsenal.forEach(function(it){
+    var def = catalogDef(it);
+    if(def && def.uniqueMax) uniqueUsage[it.itemId] = (uniqueUsage[it.itemId]||0)+1;
   });
   return { totalCost:totalCost, counts:counts, uniqueUsage:uniqueUsage, seniorSum:seniorSum, noviceSum:noviceSum };
 }
@@ -581,7 +669,7 @@ function squadIssues(){
   if(t.totalCost > state.budget) issues.push({level:'danger', text:'Превышен бюджет: '+t.totalCost+' / '+state.budget+' Известности.'});
   Object.keys(t.uniqueUsage).forEach(function(id){
     var item = d.weapons[id] || d.equipment[id];
-    if(item && t.uniqueUsage[id] > item.uniqueMax) issues.push({level:'danger', text:'«'+item.name+'» превышает лимит на отряд ('+item.uniqueMax+').'});
+    if(item && t.uniqueUsage[id] > item.uniqueMax) issues.push({level:'danger', text:'«'+item.name+'» превышает лимит на отряд ('+item.uniqueMax+', включая арсенал).'});
   });
   state.units.forEach(function(u){
     var c = computeUnit(u);
@@ -608,6 +696,7 @@ App.setTab = function(tab){
 
 App.setSquadName = function(v){ state.squadName = v; persistHot(); };
 App.setBudget = function(v){ var n = parseInt(v,10); if(!isNaN(n) && n>0){ state.budget = n; renderAll(); } };
+App.setCampaignXp = function(v){ var n = parseInt(v,10); if(!isNaN(n) && n>=0){ state.campaignXp = n; persistHot(); renderAll(); } };
 
 App.toggleAddMenu = function(){
   var el = document.getElementById('add-dropdown');
@@ -621,6 +710,7 @@ App.setArchetype = function(archId){
   }
   state.archetype = archId;
   state.units = [];
+  state.arsenal = [];
   state.squadId = null;
   persistHot();
   renderAll();
@@ -632,14 +722,18 @@ App.addUnit = function(roleId){
   var count = state.units.filter(function(u){return u.roleId===roleId;}).length;
   setState(function(s){
     s.units.push({ id:uid(), roleId:roleId, name:r.name+' '+(count+1), size:r.defaultSize, stats:stats,
-      archetypeAbilities:[], anyAbilities:[], rangedWeapons:[], meleeWeapons:[], equipment:[] });
+      archetypeAbilities:[], anyAbilities:[],
+      level:r.level, xp:0, bonusStat:0, bonusArchetype:0, bonusAny:0, knownBonus:0, heroicRoll:false });
   });
   document.getElementById('add-dropdown').hidden = true;
 };
 
 App.removeUnit = function(id){
   if(!confirm('Убрать этого бойца из отряда?')) return;
-  setState(function(s){ s.units = s.units.filter(function(u){ return u.id!==id; }); });
+  setState(function(s){
+    s.arsenal.forEach(function(it){ if(it.ownerId===id) it.ownerId = null; });
+    s.units = s.units.filter(function(u){ return u.id!==id; });
+  });
 };
 
 App.renameUnit = function(id, name){
@@ -663,7 +757,7 @@ App.stepStat = function(id, key, dir){
   var baseline = (key==='might' && r.mightBaseline) ? r.mightBaseline : 'd6';
   if(dir>0){
     if(i>=3) return;
-    if(statIncreasesUsed(u) >= r.statIncreases) return;
+    if(statIncreasesUsed(u) >= r.statIncreases + (u.bonusStat||0)) return;
     u.stats[key] = DIE_ORDER[i+1];
   } else {
     if(dieIdx(u.stats[key]) <= dieIdx(baseline)) return;
@@ -673,12 +767,51 @@ App.stepStat = function(id, key, dir){
   renderAll();
 };
 
+App.setUnitXp = function(unitId, v){
+  var u = state.units.find(function(uu){return uu.id===unitId;});
+  var n = parseInt(v,10);
+  if(u && !isNaN(n) && n>=0){ u.xp = n; persistHot(); renderAll(); }
+};
+
+App.transferXp = function(unitId, amount){
+  var u = state.units.find(function(uu){return uu.id===unitId;});
+  if(!u) return;
+  amount = Math.min(amount, state.campaignXp||0);
+  if(amount<=0) return;
+  u.xp = (u.xp||0) + amount;
+  state.campaignXp = (state.campaignXp||0) - amount;
+  persistHot(); renderAll();
+};
+
+App.levelUp = function(unitId, choice){
+  var u = state.units.find(function(uu){return uu.id===unitId;});
+  if(!u) return;
+  var lvl = unitLevel(u);
+  var row = LEVEL_TABLE[lvl+1];
+  if(!row) return;
+  if((u.xp||0) < row.xp) return;
+  var bonus = row.bonus;
+  if(bonus==='choice'){
+    if(choice!=='stat' && choice!=='ability') return;
+    bonus = choice;
+  }
+  u.xp -= row.xp;
+  u.level = lvl+1;
+  u.knownBonus = (u.knownBonus||0) + row.known;
+  if(bonus==='stat') u.bonusStat = (u.bonusStat||0)+1;
+  else if(bonus==='ability') u.bonusArchetype = (u.bonusArchetype||0)+1;
+  else if(bonus==='any') u.bonusAny = (u.bonusAny||0)+1;
+  else if(bonus==='ability_heroic'){ u.bonusArchetype = (u.bonusArchetype||0)+1; u.heroicRoll = true; }
+  persistHot();
+  renderAll();
+};
+
 App.toggleAbility = function(unitId, slotType, abilityId, checked){
   var u = state.units.find(function(u){return u.id===unitId;});
   if(!u) return;
   var r = role(u);
   var list = slotType==='archetype' ? u.archetypeAbilities : u.anyAbilities;
-  var maxSlots = slotType==='archetype' ? r.archetypeAbilitySlots : r.anyAbilitySlots;
+  var maxSlots = slotType==='archetype' ? archSlots(u,r) : anySlots(u,r);
   var otherList = slotType==='archetype' ? u.anyAbilities : u.archetypeAbilities;
   if(checked){
     if(otherList.indexOf(abilityId)!==-1) return;
@@ -692,67 +825,71 @@ App.toggleAbility = function(unitId, slotType, abilityId, checked){
   renderAll();
 };
 
-App.toggleWeapon = function(unitId, kind, weaponId, checked){
-  var u = state.units.find(function(u){return u.id===unitId;});
+// Создать новый экземпляр (тратит уник.лимит предмета на весь отряд) и сразу выдать персонажу.
+App.unitAddNew = function(unitId, kind, itemId){
+  var u = state.units.find(function(uu){return uu.id===unitId;});
   if(!u) return;
   var d = data();
-  var key = kind==='ranged' ? 'rangedWeapons' : 'meleeWeapons';
-  var w = d.weapons[weaponId];
-  if(checked){
-    if(!factionOk(w)) return;
-    if(w.reqStrength && dieIdx(u.stats.might) < dieIdx(w.reqStrength)) return;
-    if(w.uniqueMax){
-      var used = 0;
-      state.units.forEach(function(uu){ if(uu.rangedWeapons.concat(uu.meleeWeapons).indexOf(weaponId)!==-1) used++; });
-      if(used >= w.uniqueMax) return;
-    }
-    if(w.twohanded){ u[key] = [weaponId]; }
-    else {
-      var hasTwoHanded = u[key].some(function(id){ var ww=d.weapons[id]; return ww && ww.twohanded; });
-      if(hasTwoHanded) u[key] = [];
-      if(u[key].length >= 2) return;
-      u[key].push(weaponId);
-    }
-  } else {
-    u[key] = u[key].filter(function(id){ return id!==weaponId; });
+  var def = kind==='equipment' ? d.equipment[itemId] : d.weapons[itemId];
+  if(!def || !canEquip(def, u)) return;
+  if(def.uniqueMax){
+    var total = state.arsenal.filter(function(x){ return x.itemId===itemId; }).length;
+    if(total >= def.uniqueMax) return;
   }
-  persistHot();
-  renderAll();
+  var it = { id:uid(), itemId:itemId, kind:kind, ownerId:null };
+  if(!assignToUnit(it, u)) return; // не помещается (слоты/броня) — новый экземпляр никуда не попал
+  state.arsenal.push(it);
+  persistHot(); renderAll();
 };
 
-App.toggleEquipment = function(unitId, equipId, checked){
-  var u = state.units.find(function(u){return u.id===unitId;});
+// Взять уже существующий свободный экземпляр из арсенала отряда (не тратит уник.лимит).
+App.unitTakeFree = function(unitId, kind, itemId){
+  var u = state.units.find(function(uu){return uu.id===unitId;});
   if(!u) return;
-  var d = data(); var e = d.equipment[equipId];
-  if(checked){
-    if(!factionOk(e)) return;
-    if(e.reqStrength && dieIdx(u.stats.might) < dieIdx(e.reqStrength)) return;
-    if(e.uniqueMax){
-      var used = 0;
-      state.units.forEach(function(uu){ if(uu.equipment.indexOf(equipId)!==-1) used++; });
-      if(used >= e.uniqueMax) return;
-    }
-    if(u.equipment.indexOf(equipId)===-1) u.equipment.push(equipId);
-  } else {
-    u.equipment = u.equipment.filter(function(id){ return id!==equipId; });
-  }
-  persistHot();
-  renderAll();
+  var it = state.arsenal.find(function(x){ return x.ownerId===null && x.itemId===itemId; });
+  if(!it) return;
+  if(assignToUnit(it, u)){ persistHot(); renderAll(); }
 };
 
-App.setArmor = function(unitId, equipId){
-  var u = state.units.find(function(u){return u.id===unitId;});
-  if(!u) return;
+// Снять с персонажа и удалить совсем.
+App.unitRemoveItem = function(unitId, kind, itemId){
+  for(var i=0;i<state.arsenal.length;i++){
+    var it = state.arsenal[i];
+    if(it.ownerId===unitId && it.kind===kind && it.itemId===itemId){ state.arsenal.splice(i,1); break; }
+  }
+  persistHot(); renderAll();
+};
+
+// Снять с персонажа, но не выбрасывать — вернуть в общий (свободный) арсенал отряда.
+App.unitStash = function(unitId, kind, itemId){
+  var it = state.arsenal.find(function(x){ return x.ownerId===unitId && x.kind===kind && x.itemId===itemId; });
+  if(it) it.ownerId = null;
+  persistHot(); renderAll();
+};
+
+App.arsenalAdd = function(itemId, kind){
   var d = data();
-  u.equipment = u.equipment.filter(function(id){ var e=d.equipment[id]; return !e || e.group!=='armor'; });
-  if(equipId){
-    var e = d.equipment[equipId];
-    if(!factionOk(e)){ persistHot(); renderAll(); return; }
-    if(e.reqStrength && dieIdx(u.stats.might) < dieIdx(e.reqStrength)){ persistHot(); renderAll(); return; }
-    u.equipment.push(equipId);
+  var def = kind==='equipment' ? d.equipment[itemId] : d.weapons[itemId];
+  if(!def) return;
+  if(def.uniqueMax){
+    var total = state.arsenal.filter(function(it){ return it.itemId===itemId; }).length;
+    if(total >= def.uniqueMax) return;
   }
-  persistHot();
-  renderAll();
+  state.arsenal.push({ id:uid(), itemId:itemId, kind:kind, ownerId:null });
+  persistHot(); renderAll();
+};
+
+App.arsenalGive = function(instanceId, unitId){
+  var it = state.arsenal.find(function(x){ return x.id===instanceId; });
+  var u = state.units.find(function(x){ return x.id===unitId; });
+  if(!it || !u) return;
+  if(assignToUnit(it, u)){ persistHot(); renderAll(); }
+};
+
+App.arsenalDiscard = function(instanceId){
+  if(!confirm('Выбросить предмет из арсенала?')) return;
+  state.arsenal = state.arsenal.filter(function(it){ return it.id!==instanceId; });
+  persistHot(); renderAll();
 };
 
 /* ------------------------------------------------------------- RENDER ---- */
@@ -783,6 +920,7 @@ function renderSummary(){
 
 function renderToolbar(){
   var d = data(); var roles = currentArchetype().roles; var t = squadTotals();
+  var freeCount = state.arsenal.filter(function(it){ return it.ownerId===null; }).length;
   var html = '<div class="toolbar">';
   html += '<button class="btn ghost" onclick="App.setTab(\'mine\')">&larr; Все отряды</button>';
   html += '<div class="add-menu"><button class="btn primary" onclick="App.toggleAddMenu()">+ Добавить бойца</button>';
@@ -792,14 +930,14 @@ function renderToolbar(){
     html += '<button onclick="App.addUnit(\''+rid+'\')" '+(disabled?'disabled':'')+'><span>'+r.name+'</span><span class="cap">'+count+'/'+r.maxCount+' &middot; '+r.cost+' Изв.</span></button>';
   });
   html += '</div></div>';
+  html += '<button class="btn" onclick="App.openModal(\'arsenal\')">Арсенал ('+freeCount+')</button>';
+  html += '<button class="btn" onclick="App.openModal(\'squadXp\')">Опыт отряда ('+(state.campaignXp||0)+')</button>';
   html += '<button class="btn" onclick="App.saveSquad()">Сохранить отряд</button>';
   html += '<button class="btn" onclick="App.newSquad()">Новый отряд</button>';
   html += '<button class="btn ghost" onclick="App.printSquad()">Печать / PDF</button>';
   html += '</div>';
   return html;
 }
-
-function factionOk(item){ return !item.faction || item.faction===state.archetype; }
 
 /* ------------------------------------------------------------- MODALS ---- */
 
@@ -819,7 +957,7 @@ App.closeModal = function(){
 
 function refreshModal(){
   if(!activeModal) return;
-  if(activeModal.kind!=='login' && !state.units.find(function(u){ return u.id===activeModal.unitId; })){ App.closeModal(); return; }
+  if(activeModal.unitId && !state.units.find(function(u){ return u.id===activeModal.unitId; })){ App.closeModal(); return; }
   renderModalContent();
 }
 
@@ -843,103 +981,219 @@ function renderModalContent(){
   }
 
   closeBtn.hidden = false;
-  var u = state.units.find(function(uu){ return uu.id===activeModal.unitId; });
-  if(!u){ App.closeModal(); return; }
   kwTip.hidden = true;
   var scrollTop = bodyEl.scrollTop;
-  var d = data(); var r = role(u);
+  var d = data();
   var kind = activeModal.kind;
   var title = ''; var body = '';
 
-  if(kind==='archetypeAbility' || kind==='anyAbility'){
-    var isArch = kind==='archetypeAbility';
-    var list = isArch ? u.archetypeAbilities : u.anyAbilities;
-    var otherList = isArch ? u.anyAbilities : u.archetypeAbilities;
-    var slots = isArch ? r.archetypeAbilitySlots : r.anyAbilitySlots;
-    var slotType = isArch ? 'archetype' : 'any';
-    title = (isArch ? 'Способности архетипа' : 'Способность любой категории')+' ('+list.length+'/'+slots+')';
-    if(slots===0){
-      body += '<div class="note-inline">'+(isArch ? 'Эта роль не получает способностей.' : 'Эта роль не получает такой слот.')+'</div>';
+  if(kind==='arsenal'){
+    title = 'Арсенал отряда';
+    var free = state.arsenal.filter(function(it){ return it.ownerId===null; });
+    body += '<div class="section-h">Свободно в арсенале ('+free.length+')</div>';
+    if(!free.length){
+      body += '<div class="note-inline" style="padding-bottom:10px;">Пока пусто — трофеи копятся здесь после сценариев. Добавьте вручную ниже.</div>';
     } else {
-      var cats = isArch ? roleCategories(r).slice() : [];
-      if(!isArch){
-        Object.keys(d.abilities).forEach(function(aid){ var c = d.abilities[aid].category; if(cats.indexOf(c)===-1) cats.push(c); });
+      body += '<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px;">';
+      free.forEach(function(it){
+        var def = catalogDef(it); if(!def) return;
+        var eligible = state.units.filter(function(u){ return canEquipNow(def, it.kind, u); });
+        body += '<div class="acc-item" style="padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+          '<span class="acc-title" style="flex:1 1 auto;">'+esc(def.name)+'</span>'+
+          '<select onchange="if(this.value){ App.arsenalGive(\''+it.id+'\', this.value); this.value=\'\'; }"><option value="">Выдать…</option>'+
+          eligible.map(function(u){ return '<option value="'+u.id+'">'+esc(u.name)+'</option>'; }).join('')+
+          '</select>'+
+          '<button class="btn small ghost" onclick="App.arsenalDiscard(\''+it.id+'\')">Выбросить</button>'+
+          '</div>';
+      });
+      body += '</div>';
+    }
+    body += '<div class="section-h">Добавить трофей в арсенал</div>';
+    [['ranged','Дальнобойное оружие'], ['melee','Оружие ближнего боя'], ['equipment','Снаряжение (в т.ч. броня)']].forEach(function(grp, gi){
+      var gk = 'arsg'+gi; var gOpen = !!modalExpanded[gk];
+      body += '<div class="acc-group">'+accHead(gk, gOpen, '<span class="acc-title">'+grp[1]+'</span>', '');
+      if(gOpen){
+        body += '<div class="acc-children">';
+        var catalog = grp[0]==='equipment' ? d.equipment : d.weapons;
+        Object.keys(catalog).forEach(function(id){
+          var def = catalog[id];
+          if(grp[0]!=='equipment' && def.kind!==grp[0]) return;
+          if(!factionOk(def)) return;
+          var total = state.arsenal.filter(function(it){ return it.itemId===id; }).length;
+          var blocked = def.uniqueMax && total>=def.uniqueMax;
+          body += '<div class="acc-item"><div class="acc-head" style="padding:7px 8px;"><span class="acc-title">'+esc(def.name)+'</span><span class="acc-right"><span class="cost-chip">'+def.cost+' Изв.</span>'+
+            '<button class="btn small" '+(blocked?'disabled':'')+' onclick="App.arsenalAdd(\''+id+'\',\''+(grp[0]==='equipment' ? 'equipment' : def.kind)+'\')">+ В арсенал</button></span></div></div>';
+        });
+        body += '</div>';
       }
-      cats.forEach(function(cat, ci){
-        var ids = Object.keys(d.abilities).filter(function(aid){ return d.abilities[aid].category===cat; });
-        if(!ids.length) return;
-        var picked = ids.filter(function(aid){ return list.indexOf(aid)!==-1; }).length;
-        var gKey = 'g'+ci; var gOpen = !!modalExpanded[gKey];
-        body += '<div class="acc-group">'+accHead(gKey, gOpen, '<span class="acc-title">'+esc(cat)+'</span>', '<span class="acc-meta">'+ids.length+(picked ? ' · выбрано '+picked : '')+'</span>');
-        if(gOpen){
-          body += '<div class="acc-children">';
-          ids.forEach(function(aid){
-            var ab = d.abilities[aid];
-            var has = list.indexOf(aid)!==-1;
-            var aKey = 'a:'+aid; var aOpen = !!modalExpanded[aKey];
-            var reason = '';
-            if(!has){
-              if(otherList.indexOf(aid)!==-1) reason = 'Уже выбрана в другом слоте';
-              else if(list.length>=slots) reason = isArch ? 'Все слоты способностей заняты' : 'Слот занят';
-            }
-            body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead(aKey, aOpen, '<span class="acc-title">'+esc(ab.name)+'</span>', has ? '<span class="acc-badge">✓</span>' : '');
-            if(aOpen){
-              body += '<div class="acc-body"><div class="acc-text">'+esc(ab.text)+'</div>'+
-                accAction(has, reason, 'App.toggleAbility(\''+u.id+'\',\''+slotType+'\',\''+aid+'\',true)', 'App.toggleAbility(\''+u.id+'\',\''+slotType+'\',\''+aid+'\',false)')+'</div>';
-            }
+      body += '</div>';
+    });
+
+  } else if(kind==='squadXp'){
+    title = 'Опыт отряда';
+    body += '<div class="derived-box" style="margin-bottom:12px;"><div class="dname">Не распределён</div><div class="dval num">'+(state.campaignXp||0)+'</div></div>';
+    body += '<div class="acc-actions">'+
+      '<button class="btn small" '+((state.campaignXp||0)<=0?'disabled':'')+' onclick="App.setCampaignXp('+Math.max(0,(state.campaignXp||0)-1)+')">&minus;1</button>'+
+      '<button class="btn small" '+((state.campaignXp||0)<5?'disabled':'')+' onclick="App.setCampaignXp('+Math.max(0,(state.campaignXp||0)-5)+')">&minus;5</button>'+
+      '<button class="btn small" onclick="App.setCampaignXp('+((state.campaignXp||0)+1)+')">+1</button>'+
+      '<button class="btn small" onclick="App.setCampaignXp('+((state.campaignXp||0)+5)+')">+5</button>'+
+      '</div>';
+    body += '<div class="note-inline" style="padding-top:10px;">Опыт отряда начисляется по итогам сценария. Перенести очки конкретному бойцу можно из его собственной карточки опыта (кнопка «Опыт» на карточке бойца).</div>';
+
+  } else {
+    var u = state.units.find(function(uu){ return uu.id===activeModal.unitId; });
+    if(!u){ App.closeModal(); return; }
+    var r = role(u);
+
+    if(kind==='xp'){
+      title = 'Опыт — '+u.name;
+      var lvl = unitLevel(u);
+      body += '<div class="derived-box" style="margin-bottom:12px;"><div class="dname">Текущий опыт</div><div class="dval num">'+(u.xp||0)+'</div></div>';
+      body += '<div class="acc-actions">'+
+        '<button class="btn small" '+((u.xp||0)<=0?'disabled':'')+' onclick="App.setUnitXp(\''+u.id+'\','+Math.max(0,(u.xp||0)-1)+')">&minus;1</button>'+
+        '<button class="btn small" '+((u.xp||0)<5?'disabled':'')+' onclick="App.setUnitXp(\''+u.id+'\','+Math.max(0,(u.xp||0)-5)+')">&minus;5</button>'+
+        '<button class="btn small" onclick="App.setUnitXp(\''+u.id+'\','+((u.xp||0)+1)+')">+1</button>'+
+        '<button class="btn small" onclick="App.setUnitXp(\''+u.id+'\','+((u.xp||0)+5)+')">+5</button>'+
+        '</div>';
+      if((state.campaignXp||0) > 0){
+        body += '<div class="acc-actions" style="margin-top:8px;"><button class="btn small ghost" onclick="App.transferXp(\''+u.id+'\',1)">Перенести 1 из опыта отряда ('+state.campaignXp+')</button></div>';
+      }
+      body += '<div class="section-h" style="margin-top:14px;">Прогрессия</div>';
+      var nextRow = LEVEL_TABLE[lvl+1];
+      if(!nextRow){
+        body += '<div class="note-inline">Максимальный уровень ('+lvl+').</div>';
+      } else if((u.xp||0) < nextRow.xp){
+        body += '<div class="note-inline">Уровень '+lvl+'. До уровня '+(lvl+1)+' нужно '+nextRow.xp+' опыта (сейчас '+(u.xp||0)+').</div>';
+      } else if(nextRow.bonus==='choice'){
+        body += '<div class="note-inline" style="padding-bottom:6px;">Уровень '+(lvl+1)+' — выберите бонус:</div><div class="acc-actions">'+
+          '<button class="btn small primary" onclick="App.levelUp(\''+u.id+'\',\'stat\')">Параметр</button>'+
+          '<button class="btn small primary" onclick="App.levelUp(\''+u.id+'\',\'ability\')">Способность архетипа</button></div>';
+      } else {
+        body += '<div class="acc-actions"><button class="btn small primary" onclick="App.levelUp(\''+u.id+'\')">Уровень '+(lvl+1)+': '+LEVEL_BONUS_LABEL[nextRow.bonus]+'</button></div>';
+      }
+      if(u.heroicRoll){ body += '<div class="note-inline" style="padding-top:8px;">Героический бросок ✓</div>'; }
+
+    } else if(kind==='archetypeAbility' || kind==='anyAbility'){
+      var isArch = kind==='archetypeAbility';
+      var list = isArch ? u.archetypeAbilities : u.anyAbilities;
+      var otherList = isArch ? u.anyAbilities : u.archetypeAbilities;
+      var slots = isArch ? archSlots(u,r) : anySlots(u,r);
+      var slotType = isArch ? 'archetype' : 'any';
+      title = (isArch ? 'Способности архетипа' : 'Способность любой категории')+' ('+list.length+'/'+slots+')';
+      if(slots===0){
+        body += '<div class="note-inline">'+(isArch ? 'Эта роль не получает способностей.' : 'Эта роль не получает такой слот.')+'</div>';
+      } else {
+        var cats = isArch ? roleCategories(r).slice() : [];
+        if(!isArch){
+          Object.keys(d.abilities).forEach(function(aid){ var c = d.abilities[aid].category; if(cats.indexOf(c)===-1) cats.push(c); });
+        }
+        cats.forEach(function(cat, ci){
+          var ids = Object.keys(d.abilities).filter(function(aid){ return d.abilities[aid].category===cat; });
+          if(!ids.length) return;
+          var picked = ids.filter(function(aid){ return list.indexOf(aid)!==-1; }).length;
+          var gKey = 'g'+ci; var gOpen = !!modalExpanded[gKey];
+          body += '<div class="acc-group">'+accHead(gKey, gOpen, '<span class="acc-title">'+esc(cat)+'</span>', '<span class="acc-meta">'+ids.length+(picked ? ' · выбрано '+picked : '')+'</span>');
+          if(gOpen){
+            body += '<div class="acc-children">';
+            ids.forEach(function(aid){
+              var ab = d.abilities[aid];
+              var has = list.indexOf(aid)!==-1;
+              var aKey = 'a:'+aid; var aOpen = !!modalExpanded[aKey];
+              var reason = '';
+              if(!has){
+                if(otherList.indexOf(aid)!==-1) reason = 'Уже выбрана в другом слоте';
+                else if(list.length>=slots) reason = isArch ? 'Все слоты способностей заняты' : 'Слот занят';
+              }
+              body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead(aKey, aOpen, '<span class="acc-title">'+esc(ab.name)+'</span>', has ? '<span class="acc-badge">✓</span>' : '');
+              if(aOpen){
+                body += '<div class="acc-body"><div class="acc-text">'+highlightKeywords(ab.text)+'</div>'+
+                  accAction(has, reason, 'App.toggleAbility(\''+u.id+'\',\''+slotType+'\',\''+aid+'\',true)', 'App.toggleAbility(\''+u.id+'\',\''+slotType+'\',\''+aid+'\',false)')+'</div>';
+              }
+              body += '</div>';
+            });
             body += '</div>';
-          });
+          }
           body += '</div>';
+        });
+      }
+      if(isArch && r.note){ body += '<div class="note-inline" style="padding-top:8px;">'+esc(r.note)+'</div>'; }
+
+    } else if(kind==='rangedWeapon' || kind==='meleeWeapon'){
+      var isR = kind==='rangedWeapon';
+      var wKind = isR ? 'ranged' : 'melee';
+      title = isR ? 'Дальнобойное оружие' : 'Оружие ближнего боя';
+      if(!isR){ body += '<div class="note-inline" style="padding-bottom:8px;">Без выбора действует безоружная атака (дальн.1, урон1, Лёгкое).</div>'; }
+      var ownedW = arsenalItemsOf(u.id, wKind);
+      Object.keys(d.weapons).forEach(function(wid){
+        var w = d.weapons[wid]; if(w.kind!==wKind) return; if(!factionOk(w)) return;
+        var count = ownedW.filter(function(it){ return it.itemId===wid; }).length;
+        var freeCount = state.arsenal.filter(function(it){ return it.itemId===wid && it.ownerId===null; }).length;
+        var reasonsTake = fitReasons(w, wKind, u);
+        var reasonsNew = reasonsTake.slice();
+        var totalInSquad = state.arsenal.filter(function(it){ return it.itemId===wid; }).length;
+        if(w.uniqueMax && totalInSquad>=w.uniqueMax) reasonsNew.push('лимит '+w.uniqueMax+' на отряд исчерпан');
+        var open = !!modalExpanded['w:'+wid];
+        body += '<div class="acc-item'+(count>0 ? ' picked' : '')+'">'+accHead('w:'+wid, open, '<span class="acc-title">'+esc(w.name)+(count>0 ? ' &times;'+count : '')+'</span>', '<span class="cost-chip">'+w.cost+' Изв.</span>');
+        if(open){
+          body += '<div class="acc-body"><div class="acc-stats"><span>Дальность: <b>'+w.range+'&Prime;</b></span><span>Урон: <b>'+w.damage+'</b></span><span>Слотов: <b>'+weaponSlot(w)+'</b></span>'+(w.uniqueMax ? '<span>Уник.: <b>'+w.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
+            (w.traits.length ? '<div class="kw-row">'+kwChips(w.traits)+'</div>' : '')+
+            qtyAction(count, freeCount, reasonsNew.join('; '), reasonsTake.join('; '),
+              'App.unitAddNew(\''+u.id+'\',\''+wKind+'\',\''+wid+'\')', 'App.unitTakeFree(\''+u.id+'\',\''+wKind+'\',\''+wid+'\')',
+              'App.unitRemoveItem(\''+u.id+'\',\''+wKind+'\',\''+wid+'\')', 'App.unitStash(\''+u.id+'\',\''+wKind+'\',\''+wid+'\')')+'</div>';
+        }
+        body += '</div>';
+      });
+
+    } else if(kind==='equipment'){
+      title = 'Прочее снаряжение';
+      var ownedE = arsenalItemsOf(u.id, 'equipment');
+      Object.keys(d.equipment).forEach(function(eid){
+        var e = d.equipment[eid]; if(e.group==='armor') return; if(!factionOk(e)) return;
+        var count = ownedE.filter(function(it){ return it.itemId===eid; }).length;
+        var freeCount = state.arsenal.filter(function(it){ return it.itemId===eid && it.ownerId===null; }).length;
+        var reasonsTake = fitReasons(e, 'equipment', u);
+        var reasonsNew = reasonsTake.slice();
+        var totalInSquad = state.arsenal.filter(function(it){ return it.itemId===eid; }).length;
+        if(e.uniqueMax && totalInSquad>=e.uniqueMax) reasonsNew.push('лимит '+e.uniqueMax+' на отряд исчерпан');
+        var open = !!modalExpanded['e:'+eid];
+        body += '<div class="acc-item'+(count>0 ? ' picked' : '')+'">'+accHead('e:'+eid, open, '<span class="acc-title">'+esc(e.name)+(count>0 ? ' &times;'+count : '')+'</span>', '<span class="cost-chip">'+e.cost+' Изв.</span>');
+        if(open){
+          body += '<div class="acc-body"><div class="acc-text">'+esc(e.text||'')+'</div>'+
+            '<div class="acc-stats">'+(e.slot ? '<span>Слот инвентаря: <b>'+e.slot+'</b></span>' : '')+(e.reqStrength ? '<span>Сила: <b>'+fmtDie(e.reqStrength)+'</b></span>' : '')+(e.uniqueMax ? '<span>Уник.: <b>'+e.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
+            qtyAction(count, freeCount, reasonsNew.join('; '), reasonsTake.join('; '),
+              'App.unitAddNew(\''+u.id+'\',\'equipment\',\''+eid+'\')', 'App.unitTakeFree(\''+u.id+'\',\'equipment\',\''+eid+'\')',
+              'App.unitRemoveItem(\''+u.id+'\',\'equipment\',\''+eid+'\')', 'App.unitStash(\''+u.id+'\',\'equipment\',\''+eid+'\')')+'</div>';
+        }
+        body += '</div>';
+      });
+
+    } else if(kind==='armor'){
+      title = 'Защитное снаряжение';
+      var curArmorItem = arsenalItemsOf(u.id,'equipment').find(function(it){ var e=d.equipment[it.itemId]; return e && e.group==='armor'; });
+      Object.keys(d.equipment).forEach(function(eid){
+        var e = d.equipment[eid]; if(e.group!=='armor') return;
+        var has = curArmorItem && curArmorItem.itemId===eid;
+        if(!factionOk(e) && !has) return;
+        var freeCount = state.arsenal.filter(function(it){ return it.itemId===eid && it.ownerId===null; }).length;
+        var reasons = fitReasons(e, 'equipment', u);
+        var open = !!modalExpanded['ar:'+eid];
+        body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead('ar:'+eid, open, '<span class="acc-title">'+esc(e.name)+'</span>', (has ? '<span class="acc-badge">✓</span>' : '')+'<span class="cost-chip">'+e.cost+' Изв.</span>');
+        if(open){
+          body += '<div class="acc-body"><div class="acc-text">'+esc(e.text||'')+'</div>';
+          body += '<div class="acc-actions">';
+          if(has){
+            body += '<button class="btn small" onclick="App.unitRemoveItem(\''+u.id+'\',\'equipment\',\''+eid+'\')">Удалить</button>'+
+              '<button class="btn small ghost" onclick="App.unitStash(\''+u.id+'\',\'equipment\',\''+eid+'\')">В арсенал</button>';
+          } else {
+            if(freeCount>0) body += '<button class="btn small" '+(reasons.length?'disabled':'')+' onclick="App.unitTakeFree(\''+u.id+'\',\'equipment\',\''+eid+'\')">Взять из арсенала ('+freeCount+')</button>';
+            body += '<button class="btn small primary" '+(reasons.length?'disabled':'')+' onclick="App.unitAddNew(\''+u.id+'\',\'equipment\',\''+eid+'\')">Добавить</button>';
+            if(reasons.length) body += '<span class="note-inline">'+esc(reasons.join('; '))+'</span>';
+          }
+          body += '</div></div>';
         }
         body += '</div>';
       });
     }
-    if(isArch && r.note){ body += '<div class="note-inline" style="padding-top:8px;">'+esc(r.note)+'</div>'; }
-
-  } else if(kind==='rangedWeapon' || kind==='meleeWeapon'){
-    var isR = kind==='rangedWeapon';
-    var wKey = isR ? 'rangedWeapons' : 'meleeWeapons';
-    title = isR ? 'Дальнобойное оружие' : 'Оружие ближнего боя';
-    if(!isR){ body += '<div class="note-inline" style="padding-bottom:8px;">Без выбора действует безоружная атака (дальн.1, урон1, Лёгкое).</div>'; }
-    Object.keys(d.weapons).forEach(function(wid){
-      var w = d.weapons[wid]; if(w.kind!==(isR ? 'ranged' : 'melee')) return; if(!factionOk(w)) return;
-      var has = u[wKey].indexOf(wid)!==-1;
-      var reasons = [];
-      if(w.reqStrength && dieIdx(u.stats.might) < dieIdx(w.reqStrength)) reasons.push('нужна Сила '+fmtDie(w.reqStrength));
-      if(w.uniqueMax){
-        var used = 0; state.units.forEach(function(uu){ if(uu.rangedWeapons.indexOf(wid)!==-1 || uu.meleeWeapons.indexOf(wid)!==-1) used++; });
-        if(!has && used>=w.uniqueMax) reasons.push('лимит '+w.uniqueMax+' на отряд исчерпан');
-      }
-      var open = !!modalExpanded['w:'+wid];
-      body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead('w:'+wid, open, '<span class="acc-title">'+esc(w.name)+'</span>', (has ? '<span class="acc-badge">✓</span>' : '')+'<span class="cost-chip">'+w.cost+' Изв.</span>');
-      if(open){
-        body += '<div class="acc-body"><div class="acc-stats"><span>Дальность: <b>'+w.range+'&Prime;</b></span><span>Урон: <b>'+w.damage+'</b></span>'+(w.uniqueMax ? '<span>Уник.: <b>'+w.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
-          (w.traits.length ? '<div class="kw-row">'+kwChips(w.traits)+'</div>' : '')+
-          accAction(has, has ? '' : reasons.join('; '), 'App.toggleWeapon(\''+u.id+'\',\''+(isR ? 'ranged' : 'melee')+'\',\''+wid+'\',true)', 'App.toggleWeapon(\''+u.id+'\',\''+(isR ? 'ranged' : 'melee')+'\',\''+wid+'\',false)')+'</div>';
-      }
-      body += '</div>';
-    });
-
-  } else if(kind==='equipment'){
-    title = 'Прочее снаряжение';
-    Object.keys(d.equipment).forEach(function(eid){
-      var e = d.equipment[eid]; if(e.group==='armor') return; if(!factionOk(e)) return;
-      var has = u.equipment.indexOf(eid)!==-1;
-      var reasons = [];
-      if(e.reqStrength && dieIdx(u.stats.might) < dieIdx(e.reqStrength)) reasons.push('нужна Сила '+fmtDie(e.reqStrength));
-      if(e.uniqueMax){
-        var used = 0; state.units.forEach(function(uu){ if(uu.equipment.indexOf(eid)!==-1) used++; });
-        if(!has && used>=e.uniqueMax) reasons.push('лимит '+e.uniqueMax+' на отряд исчерпан');
-      }
-      var open = !!modalExpanded['e:'+eid];
-      body += '<div class="acc-item'+(has ? ' picked' : '')+'">'+accHead('e:'+eid, open, '<span class="acc-title">'+esc(e.name)+'</span>', (has ? '<span class="acc-badge">✓</span>' : '')+'<span class="cost-chip">'+e.cost+' Изв.</span>');
-      if(open){
-        body += '<div class="acc-body"><div class="acc-text">'+esc(e.text||'')+'</div>'+
-          '<div class="acc-stats">'+(e.slot ? '<span>Слот инвентаря: <b>'+e.slot+'</b></span>' : '')+(e.reqStrength ? '<span>Сила: <b>'+fmtDie(e.reqStrength)+'</b></span>' : '')+(e.uniqueMax ? '<span>Уник.: <b>'+e.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
-          accAction(has, has ? '' : reasons.join('; '), 'App.toggleEquipment(\''+u.id+'\',\''+eid+'\',true)', 'App.toggleEquipment(\''+u.id+'\',\''+eid+'\',false)')+'</div>';
-      }
-      body += '</div>';
-    });
   }
 
   titleEl.textContent = title;
@@ -954,6 +1208,20 @@ function accHead(key, open, left, right){
 function accAction(has, reason, addCall, removeCall){
   if(has) return '<div class="acc-actions"><button class="btn small" onclick="'+removeCall+'">Убрать</button></div>';
   return '<div class="acc-actions"><button class="btn small primary" '+(reason ? 'disabled' : '')+' onclick="'+addCall+'">Добавить</button>'+(reason ? '<span class="note-inline">'+esc(reason)+'</span>' : '')+'</div>';
+}
+
+function qtyAction(count, freeCount, reasonNew, reasonTake, addNewCall, takeFreeCall, deleteCall, stashCall){
+  var html = '<div class="acc-actions">';
+  if(count>0){
+    html += '<button class="btn small" onclick="'+deleteCall+'">Удалить</button>';
+    html += '<button class="btn small ghost" onclick="'+stashCall+'">В арсенал</button>';
+  }
+  if(freeCount>0) html += '<button class="btn small" '+(reasonTake ? 'disabled' : '')+' onclick="'+takeFreeCall+'">Взять из арсенала ('+freeCount+')</button>';
+  html += '<button class="btn small primary" '+(reasonNew ? 'disabled' : '')+' onclick="'+addNewCall+'">+ Добавить'+(count>0 ? ' ещё' : '')+'</button>';
+  var msg = reasonNew || reasonTake;
+  if(msg) html += '<span class="note-inline">'+esc(msg)+'</span>';
+  html += '</div>';
+  return html;
 }
 
 function glossaryFor(trait){
@@ -975,6 +1243,48 @@ function kwChips(traits){
   }).join('');
 }
 
+// Имя предмета/способности с подсказкой (её же описание) по наведению — для уже
+// выбранных вещей в сводке карточки (не только у ключевых слов оружия).
+function nameChip(name, text){
+  return '<span class="kw" data-tip="'+esc(name+(text ? ' — '+text : ''))+'" tabindex="0">'+esc(name)+'</span>';
+}
+
+// Находит упоминания ключевых слов справочника прямо в тексте способности
+// (например "Оглушение", "Замедление", "Бронебойность(1)") и возвращает их
+// список — используется и для подсветки в модалке, и для страницы-справочника
+// при печати.
+function keywordsInText(text){
+  var glossary = data().glossary || {};
+  var found = [];
+  Object.keys(glossary).forEach(function(gid){
+    var g = glossary[gid];
+    var base = g.name.replace(/\(.*$/, '').trim();
+    if(text.indexOf(base) !== -1 && found.indexOf(g)===-1) found.push(g);
+  });
+  return found;
+}
+
+// Оборачивает найденные в тексте ключевые слова в те же «пилюли» с подсказкой,
+// остальной текст экранируется как обычно.
+function highlightKeywords(text){
+  var found = keywordsInText(text);
+  if(!found.length) return esc(text);
+  var bases = found.map(function(g){ return g.name.replace(/\(.*$/, '').trim(); }).sort(function(a,b){ return b.length-a.length; });
+  var escapedBases = bases.map(function(b){ return b.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); });
+  var re = new RegExp('(' + escapedBases.join('|') + ')(\\([^)]{0,12}\\))?', 'g');
+  var out = ''; var lastIndex = 0; var m;
+  while((m = re.exec(text))){
+    out += esc(text.slice(lastIndex, m.index));
+    var full = m[0]; var base = m[1];
+    var g = found.filter(function(gg){ return gg.name.replace(/\(.*$/,'').trim()===base; })[0];
+    var tip = g ? (g.name+' — '+g.text) : full;
+    out += '<span class="kw" data-tip="'+esc(tip)+'" tabindex="0">'+esc(full)+'</span>';
+    lastIndex = re.lastIndex;
+  }
+  out += esc(text.slice(lastIndex));
+  return out;
+}
+
 App.toggleAcc = function(key){
   modalExpanded[key] = !modalExpanded[key];
   renderModalContent();
@@ -992,6 +1302,7 @@ App.submitLogin = function(){
 
 function renderUnit(u){
   var d = data(); var r = role(u); var c = computeUnit(u);
+  var lvl = unitLevel(u);
   var html = '<div class="unit">';
   html += '<div class="sheet-head">';
   html += '<div class="sh-cell sh-name"><span class="sh-label">Имя</span><input class="uname" value="'+esc(u.name)+'" oninput="App.renameUnit(\''+u.id+'\',this.value)"></div>';
@@ -999,7 +1310,7 @@ function renderUnit(u){
   html += '<div class="sh-cell"><span class="sh-label">Размер</span><select class="size-select" onchange="App.setSize(\''+u.id+'\',this.value)">';
   for(var s=r.sizeMin; s<=r.sizeMax; s++) html += '<option value="'+s+'" '+(u.size===s?'selected':'')+'>'+s+'</option>';
   html += '</select></div>';
-  html += '<div class="sh-cell"><span class="sh-label">Уровень</span><span class="sh-val num">'+r.level+'</span></div>';
+  html += '<div class="sh-cell"><span class="sh-label">Уровень</span><span class="sh-val num">'+lvl+'</span></div>';
   html += '<div class="sh-cell"><span class="sh-label">Известность</span><span class="sh-val num">'+c.cost+'</span></div>';
   html += '<button class="btn small ghost" onclick="App.removeUnit(\''+u.id+'\')">Удалить</button>';
   html += '</div>';
@@ -1017,6 +1328,13 @@ function renderUnit(u){
   });
   html += '</div></div>';
 
+  html += '<div class="edit-actions">';
+  var nextRow = LEVEL_TABLE[lvl+1];
+  var canLevelUp = nextRow && (u.xp||0) >= nextRow.xp;
+  html += '<button class="btn small'+(canLevelUp?' primary':'')+'" onclick="App.openModal(\'xp\',\''+u.id+'\')">Опыт: '+(u.xp||0)+(canLevelUp?' — можно повысить уровень!':'')+'</button>';
+  if(u.heroicRoll){ html += '<span class="note-inline">Героический бросок ✓</span>'; }
+  html += '</div>';
+
   html += '<div class="sheet-body">';
   html += '<div class="sheet-left">';
   html += '<div class="derived-box"><div class="dname">Защита</div><div class="dval num">'+c.defence+'</div></div>';
@@ -1027,21 +1345,21 @@ function renderUnit(u){
   html += '</div>';
 
   html += '<div class="sheet-right">';
-  var gearWeapons = u.rangedWeapons.concat(u.meleeWeapons);
+  var gearWeapons = arsenalItemsOf(u.id,'ranged').concat(arsenalItemsOf(u.id,'melee'));
   html += '<div class="gear-scroll"><table class="gear-table"><thead><tr><th>Название</th><th>Тип</th><th>Дальность</th><th>Урон</th><th>Спецправила</th></tr></thead><tbody>';
   if(gearWeapons.length===0){
     html += '<tr><td colspan="5" class="note-inline">Безоружная атака — дальн.1&Prime;, урон 1, Лёгкое</td></tr>';
   } else {
-    gearWeapons.forEach(function(wid){
-      var w = d.weapons[wid]; if(!w) return;
+    gearWeapons.forEach(function(it){
+      var w = d.weapons[it.itemId]; if(!w) return;
       html += '<tr><td>'+esc(w.name)+'</td><td>'+(w.kind==='ranged'?'Дальнобойное':'Ближний бой')+'</td><td>'+w.range+'&Prime;</td><td>'+w.damage+'</td><td class="kw-cell">'+kwChips(w.traits)+'</td></tr>';
     });
   }
   html += '</tbody></table></div>';
-  var gearNames = u.equipment.map(function(eid){ var e=d.equipment[eid]; return e?e.name:null; }).filter(Boolean);
-  html += '<div class="sheet-line"><b>Экипировка:</b> '+(gearNames.length?esc(gearNames.join(', ')):'&mdash;')+'</div>';
-  var abilityNames = u.archetypeAbilities.concat(u.anyAbilities).map(function(aid){ var a=d.abilities[aid]; return a?a.name:null; }).filter(Boolean);
-  html += '<div class="sheet-line"><b>Способности:</b> '+(abilityNames.length?esc(abilityNames.join(', ')):'&mdash;')+'</div>';
+  var gearChips = arsenalItemsOf(u.id,'equipment').map(function(it){ var e=d.equipment[it.itemId]; return e?nameChip(e.name, e.text||''):null; }).filter(Boolean);
+  html += '<div class="sheet-line"><b>Экипировка:</b> '+(gearChips.length?gearChips.join(', '):'&mdash;')+'</div>';
+  var abilityChips = u.archetypeAbilities.concat(u.anyAbilities).map(function(aid){ var a=d.abilities[aid]; return a?nameChip(a.name, a.text):null; }).filter(Boolean);
+  html += '<div class="sheet-line"><b>Способности:</b> '+(abilityChips.length?abilityChips.join(', '):'&mdash;')+'</div>';
   html += '</div>';
   html += '</div>';
 
@@ -1053,20 +1371,15 @@ function renderUnit(u){
     html += '<div class="note-inline">«Неостановимая сила» (Размер '+arch.sizeBonusRule.size+'): доп. Броня +'+(arch.sizeBonusRule.armor||0)+', Здоровье +'+(arch.sizeBonusRule.health||0)+' — уже учтено выше.</div>';
   }
 
-  var curArmor = u.equipment.find(function(id){ var e=d.equipment[id]; return e && e.group==='armor'; }) || '';
+  var curArmorId = arsenalItemsOf(u.id,'equipment').map(function(it){return it.itemId;}).find(function(id){ var e=d.equipment[id]; return e && e.group==='armor'; }) || '';
+  var curArmorName = curArmorId ? d.equipment[curArmorId].name : '— нет —';
   html += '<div class="edit-actions">';
-  html += '<button class="btn small" onclick="App.openModal(\'archetypeAbility\',\''+u.id+'\')">Способности архетипа ('+u.archetypeAbilities.length+'/'+r.archetypeAbilitySlots+')</button>';
-  html += '<button class="btn small" onclick="App.openModal(\'anyAbility\',\''+u.id+'\')">Способность любой категории ('+u.anyAbilities.length+'/'+r.anyAbilitySlots+')</button>';
-  html += '<button class="btn small" onclick="App.openModal(\'rangedWeapon\',\''+u.id+'\')">Дальнобойное оружие ('+u.rangedWeapons.length+')</button>';
-  html += '<button class="btn small" onclick="App.openModal(\'meleeWeapon\',\''+u.id+'\')">Оружие ближнего боя ('+u.meleeWeapons.length+')</button>';
+  html += '<button class="btn small" onclick="App.openModal(\'archetypeAbility\',\''+u.id+'\')">Способности архетипа ('+u.archetypeAbilities.length+'/'+archSlots(u,r)+')</button>';
+  html += '<button class="btn small" onclick="App.openModal(\'anyAbility\',\''+u.id+'\')">Способность любой категории ('+u.anyAbilities.length+'/'+anySlots(u,r)+')</button>';
+  html += '<button class="btn small" onclick="App.openModal(\'rangedWeapon\',\''+u.id+'\')">Дальнобойное оружие ('+arsenalItemsOf(u.id,'ranged').length+')</button>';
+  html += '<button class="btn small" onclick="App.openModal(\'meleeWeapon\',\''+u.id+'\')">Оружие ближнего боя ('+arsenalItemsOf(u.id,'melee').length+')</button>';
   html += '<button class="btn small" onclick="App.openModal(\'equipment\',\''+u.id+'\')">Прочее снаряжение</button>';
-  html += '<div class="edit-armor"><span class="sh-label">Защита</span><select class="armor-select" onchange="App.setArmor(\''+u.id+'\',this.value)"><option value="">— нет —</option>';
-  Object.keys(d.equipment).forEach(function(eid){
-    var e = d.equipment[eid]; if(e.group!=='armor') return; if(!factionOk(e) && curArmor!==eid) return;
-    var strOk = !e.reqStrength || dieIdx(u.stats.might) >= dieIdx(e.reqStrength);
-    html += '<option value="'+eid+'" '+(curArmor===eid?'selected':'')+' '+(!strOk?'disabled':'')+'>'+esc(e.name)+' (Броня +'+e.armorBonus+', '+e.cost+' Изв.'+(!strOk?', нужна Сила '+fmtDie(e.reqStrength):'')+')</option>';
-  });
-  html += '</select></div>';
+  html += '<button class="btn small" onclick="App.openModal(\'armor\',\''+u.id+'\')">Защита: '+esc(curArmorName)+'</button>';
   html += '</div>';
 
   html += '</div></div>';
@@ -1103,7 +1416,8 @@ App.saveSquad = function(){
   if(!identity.name || !identity.code){ App.openModal('login'); return; }
   var payload = {
     action:'saveSquad', id: state.squadId||undefined, ownerName: identity.name, accessCode: identity.code,
-    squadName: state.squadName, archetype: state.archetype, budget: state.budget, units: state.units
+    squadName: state.squadName, archetype: state.archetype, budget: state.budget, units: state.units,
+    arsenal: state.arsenal, campaignXp: state.campaignXp||0
   };
   apiPost(payload).then(function(res){
     if(!res.ok){ alert('Не удалось сохранить: '+res.error); return; }
@@ -1116,7 +1430,7 @@ App.saveSquad = function(){
 
 App.newSquad = function(){
   if(state.units.length>0 && !confirm('Начать новый пустой отряд? Несохранённые изменения текущего будут потеряны.')) return;
-  state = { squadName:'Новый отряд', archetype:'organization', budget:60, units:[], squadId:null, tab:'builder' };
+  state = { squadName:'Новый отряд', archetype:'organization', budget:60, units:[], arsenal:[], campaignXp:0, squadId:null, tab:'builder' };
   persistHot();
   App.setTab('builder');
   renderAll();
@@ -1126,7 +1440,24 @@ App.loadSquad = function(id){
   var sq = mySquads.find(function(s){return s.id===id;});
   if(!sq) return;
   state.squadName = sq.squadName; state.archetype = sq.archetype||'organization'; state.budget = sq.budget||60;
-  state.units = sq.units||[]; state.squadId = sq.id;
+  state.campaignXp = sq.campaignXp||0;
+  state.units = (sq.units||[]).map(function(u){
+    return {
+      id:u.id, roleId:u.roleId, name:u.name, size:u.size, stats:u.stats,
+      archetypeAbilities:u.archetypeAbilities||[], anyAbilities:u.anyAbilities||[],
+      level:u.level, xp:u.xp||0, bonusStat:u.bonusStat||0, bonusArchetype:u.bonusArchetype||0, bonusAny:u.bonusAny||0,
+      knownBonus:u.knownBonus||0, heroicRoll:!!u.heroicRoll
+    };
+  });
+  // Экземпляры оружия/снаряжения; отряды старого формата (до появления арсенала)
+  // хранили их прямо в массивах юнита — переносим их в арсенал при загрузке.
+  state.arsenal = (sq.arsenal||[]).slice();
+  (sq.units||[]).forEach(function(u){
+    (u.rangedWeapons||[]).forEach(function(wid){ state.arsenal.push({id:uid(), itemId:wid, kind:'ranged', ownerId:u.id}); });
+    (u.meleeWeapons||[]).forEach(function(wid){ state.arsenal.push({id:uid(), itemId:wid, kind:'melee', ownerId:u.id}); });
+    (u.equipment||[]).forEach(function(eid){ state.arsenal.push({id:uid(), itemId:eid, kind:'equipment', ownerId:u.id}); });
+  });
+  state.squadId = sq.id;
   persistHot();
   App.setTab('builder'); renderAll();
 };
@@ -1200,8 +1531,14 @@ App.printSquad = function(){
     '.ref-page{break-before:page;font-size:9pt;} .ref-page h1{font-size:15pt;} .ref-page .sub{margin:2mm 0 1mm;}'+
     '.ref-list{column-count:2;column-gap:6mm;margin-bottom:3mm;} .ref-list p{margin:0 0 1.5mm;break-inside:avoid;line-height:1.3;} .ref-page .cat{color:#666;font-size:8pt;}'+
     '@page{size:A4;margin:14mm 12mm;}';
+  var arch = currentArchetype();
   var html = '<meta charset="utf-8"><title>'+esc(state.squadName)+'</title><style>'+css+'</style><h1>'+esc(state.squadName)+'</h1>'+
-    '<div class="meta">Архетип: '+esc(currentArchetype().name)+' &middot; Известность: '+squadTotals().totalCost+' / '+state.budget+' &middot; Бойцов: '+state.units.length+'</div>';
+    '<div class="meta">Архетип: '+esc(arch.name)+' &middot; Известность: '+squadTotals().totalCost+' / '+state.budget+' &middot; Бойцов: '+state.units.length+' &middot; Опыт отряда: '+(state.campaignXp||0)+'</div>';
+  if(arch.specialRules && arch.specialRules.length){
+    html += '<div class="card"><div class="cbody"><div class="sub">Спецправила архетипа «'+esc(arch.name)+'»</div>';
+    arch.specialRules.forEach(function(r){ html += '<p style="margin:0 0 1.5mm;font-size:9.5pt;line-height:1.35;"><b>'+esc(r.name)+'</b> — '+esc(r.text)+'</p>'; });
+    html += '</div></div>';
+  }
   state.units.forEach(function(u){
     var c = computeUnit(u); var r = role(u);
     html += '<div class="card">';
@@ -1209,7 +1546,8 @@ App.printSquad = function(){
       '<div><span class="plabel">Имя</span><b>'+esc(u.name)+'</b></div>'+
       '<div><span class="plabel">Тип</span>'+esc(r.name)+'</div>'+
       '<div><span class="plabel">Размер</span>'+u.size+'</div>'+
-      '<div><span class="plabel">Уровень</span>'+r.level+'</div>'+
+      '<div><span class="plabel">Уровень</span>'+unitLevel(u)+'</div>'+
+      '<div><span class="plabel">Опыт</span>'+(u.xp||0)+'</div>'+
       '<div><span class="plabel">Известность</span>'+c.cost+'</div>'+
       '</div>';
     html += '<div class="pstats">'+STAT_SHEET_ORDER.map(function(k){ return '<span>'+STAT_LABELS[k]+' ('+fmtDie(u.stats[k])+')</span>'; }).join('')+'</div>';
@@ -1222,18 +1560,18 @@ App.printSquad = function(){
       '<div>Инвентарь ('+c.slotsUsed+')/('+c.slotsCap+')</div>'+
       '</div>';
     html += '<div class="pright">';
-    var gearWeapons = u.rangedWeapons.concat(u.meleeWeapons);
+    var gearWeapons = arsenalItemsOf(u.id,'ranged').concat(arsenalItemsOf(u.id,'melee'));
     html += '<table><colgroup><col style="width:24%"><col style="width:16%"><col style="width:13%"><col style="width:8%"><col style="width:39%"></colgroup><tr><th>Название</th><th>Тип</th><th>Дальность</th><th>Урон</th><th>Спецправила</th></tr>';
     if(gearWeapons.length===0){
       html += '<tr><td colspan="5">Безоружная атака — дальн.1" урон 1, Лёгкое</td></tr>';
     } else {
-      gearWeapons.forEach(function(wid){
-        var wp = d.weapons[wid]; if(!wp) return;
+      gearWeapons.forEach(function(it){
+        var wp = d.weapons[it.itemId]; if(!wp) return;
         html += '<tr><td>'+esc(wp.name)+'</td><td>'+(wp.kind==='ranged'?'Дальнобойное':'Ближний бой')+'</td><td>'+wp.range+'"</td><td>'+wp.damage+'</td><td>'+esc(wp.traits.join(', '))+'</td></tr>';
       });
     }
     html += '</table>';
-    var gearNames = u.equipment.map(function(eid){ var e=d.equipment[eid]; return e?e.name:null; }).filter(Boolean);
+    var gearNames = arsenalItemsOf(u.id,'equipment').map(function(it){ var e=d.equipment[it.itemId]; return e?e.name:null; }).filter(Boolean);
     html += '<div><b>Экипировка:</b> '+(gearNames.length?esc(gearNames.join(', ')):'—')+'</div>';
     var abilityNames = u.archetypeAbilities.concat(u.anyAbilities).map(function(aid){ var a=d.abilities[aid]; return a?a.name:null; }).filter(Boolean);
     html += '<div style="margin-top:2mm;"><b>Способности:</b> '+(abilityNames.length?esc(abilityNames.join(', ')):'—')+'</div>';
@@ -1244,12 +1582,12 @@ App.printSquad = function(){
 
   var usedKw = []; var usedAbilities = []; var usedGear = [];
   state.units.forEach(function(u){
-    u.equipment.forEach(function(eid){
-      var eq = d.equipment[eid];
-      if(eq && eq.group!=='armor' && !eq.grantsSlot && usedGear.indexOf(eid)===-1) usedGear.push(eid);
+    arsenalItemsOf(u.id,'equipment').forEach(function(it){
+      var eq = d.equipment[it.itemId];
+      if(eq && eq.group!=='armor' && !eq.grantsSlot && usedGear.indexOf(it.itemId)===-1) usedGear.push(it.itemId);
     });
-    u.rangedWeapons.concat(u.meleeWeapons).forEach(function(wid){
-      var wp = d.weapons[wid]; if(!wp) return;
+    arsenalItemsOf(u.id,'ranged').concat(arsenalItemsOf(u.id,'melee')).forEach(function(it){
+      var wp = d.weapons[it.itemId]; if(!wp) return;
       wp.traits.forEach(function(t){
         var g = glossaryFor(t);
         if(g && g.name.indexOf('Требует')!==0 && usedKw.indexOf(g)===-1) usedKw.push(g);
@@ -1257,6 +1595,11 @@ App.printSquad = function(){
     });
     u.archetypeAbilities.concat(u.anyAbilities).forEach(function(aid){
       if(d.abilities[aid] && usedAbilities.indexOf(aid)===-1) usedAbilities.push(aid);
+    });
+  });
+  usedAbilities.forEach(function(aid){
+    keywordsInText(d.abilities[aid].text).forEach(function(g){
+      if(g.name.indexOf('Требует')!==0 && usedKw.indexOf(g)===-1) usedKw.push(g);
     });
   });
   if(usedKw.length || usedAbilities.length || usedGear.length){
@@ -1317,6 +1660,8 @@ document.addEventListener('keydown', function(e){
 
 function boot(){
   state = loadPersistedState() || defaultState();
+  if(!state.arsenal) state.arsenal = [];
+  if(state.campaignXp===undefined) state.campaignXp = 0;
   loadPersistedIdentity();
   renderDataBanner();
   renderAll();
@@ -1344,6 +1689,7 @@ function loadGameData(){
 }
 
 boot();
+
 
 })();
 </script>

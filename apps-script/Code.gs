@@ -352,8 +352,14 @@ function seedSpecialRules(ss) {
 }
 
 function ensureSquadsSheet(ss) {
-  var headers = ['id', 'ownerName', 'accessCode', 'squadName', 'archetype', 'budget', 'unitsJson', 'updatedAt'];
-  getOrCreateSheet_(ss, SHEET_SQUADS, headers);
+  // arsenalJson/campaignXp добавлены позже — если лист уже существовал со старыми
+  // 8 колонками, дописываем недостающие справа, не трогая уже сохранённые отряды.
+  var headers = ['id', 'ownerName', 'accessCode', 'squadName', 'archetype', 'budget', 'unitsJson', 'updatedAt', 'arsenalJson', 'campaignXp'];
+  var sh = getOrCreateSheet_(ss, SHEET_SQUADS, headers);
+  var lastCol = sh.getLastColumn();
+  if (lastCol < headers.length) {
+    sh.getRange(1, lastCol + 1, 1, headers.length - lastCol).setValues([headers.slice(lastCol)]);
+  }
 }
 
 /* ==================================================== ЧТЕНИЕ ДАННЫХ ==== */
@@ -512,7 +518,12 @@ function listSquads_(ownerName, accessCode) {
     .map(function (r) {
       var units = [];
       try { units = JSON.parse(r.unitsJson || '[]'); } catch (e) { units = []; }
-      return { id: r.id, squadName: r.squadName, archetype: r.archetype, budget: Number(r.budget), units: units, updatedAt: r.updatedAt };
+      var arsenal = [];
+      try { arsenal = JSON.parse(r.arsenalJson || '[]'); } catch (e) { arsenal = []; }
+      return {
+        id: r.id, squadName: r.squadName, archetype: r.archetype, budget: Number(r.budget),
+        units: units, arsenal: arsenal, campaignXp: Number(r.campaignXp) || 0, updatedAt: r.updatedAt
+      };
     });
 }
 
@@ -534,19 +545,22 @@ function saveSquad_(payload) {
   }
 
   var now = new Date().toISOString();
+  var rowValues = [
+    payload.squadName || '', payload.archetype || '', payload.budget || 0,
+    JSON.stringify(payload.units || []), now,
+    JSON.stringify(payload.arsenal || []), payload.campaignXp || 0
+  ];
 
   if (foundRowIndex > -1) {
-    var existing = sh.getRange(foundRowIndex, 1, 1, 8).getValues()[0];
+    var existing = sh.getRange(foundRowIndex, 1, 1, 3).getValues()[0];
     if (normName_(existing[1]) !== normName_(ownerName) || String(existing[2]) !== accessCode) {
       throw new Error('Отряд с таким id принадлежит другому имени/коду доступа.');
     }
-    sh.getRange(foundRowIndex, 4, 1, 5).setValues([[
-      payload.squadName || '', payload.archetype || '', payload.budget || 0, JSON.stringify(payload.units || []), now
-    ]]);
+    sh.getRange(foundRowIndex, 4, 1, rowValues.length).setValues([rowValues]);
     return { id: id, updatedAt: now };
   } else {
     var newId = Utilities.getUuid();
-    sh.appendRow([newId, ownerName, accessCode, payload.squadName || '', payload.archetype || '', payload.budget || 0, JSON.stringify(payload.units || []), now]);
+    sh.appendRow([newId, ownerName, accessCode].concat(rowValues));
     return { id: newId, updatedAt: now };
   }
 }
@@ -599,6 +613,7 @@ function doPost(e) {
   try {
     var payload = JSON.parse(e.postData.contents || '{}');
     var action = payload.action;
+    ensureSquadsSheet(SpreadsheetApp.getActiveSpreadsheet());
     if (action === 'listSquads') {
       return jsonOut_({ ok: true, squads: listSquads_(payload.ownerName, payload.accessCode) });
     }
