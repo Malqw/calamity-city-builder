@@ -61,15 +61,13 @@
   section.view{ display:flex; flex-direction:column; gap:18px; }
 
   /* summary strip */
-  .summary{ display:grid; grid-template-columns:1.4fr repeat(4,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
+  .summary{ display:grid; grid-template-columns:1.2fr repeat(5,1fr); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); }
   @media (max-width:720px){ .summary{ grid-template-columns:1fr 1fr; } }
   .summary > div{ background:var(--surface); padding:12px 14px; display:flex; flex-direction:column; gap:4px; justify-content:center; }
   .summary .label{ font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-muted); font-weight:600; }
   .summary .value{ font-family:var(--font-mono); font-size:19px; font-weight:600; }
   .summary .name-cell input{ font-family:var(--font-display); font-size:19px; font-weight:700; border:none; background:transparent; color:var(--text); padding:0; width:100%; }
   .summary .name-cell input:focus{ outline:none; border-bottom:1px solid var(--accent); }
-  .budget-edit{ display:flex; align-items:center; gap:4px; }
-  .budget-edit input{ width:52px; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); padding:2px 5px; font-family:var(--font-mono); }
   .pill{ display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 10px; font-size:12px; font-weight:600; }
   .pill.good{ background:var(--good-bg); color:var(--good); }
   .pill.danger{ background:var(--danger-bg); color:var(--danger); }
@@ -483,6 +481,7 @@ var mySquads = [];
 var identity = { name:'', code:'' };
 var activeModal = null; // {kind, unitId?}
 var modalExpanded = {};
+var newSquadDraft = null; // {archetype, budget} — черновик, пока открыта модалка «Новый отряд»
 var kwTip = document.getElementById('kw-tip');
 
 function data(){ return liveData || DEFAULT_DATA; }
@@ -631,9 +630,15 @@ function computeUnit(unit){
   ownedEquip.forEach(function(it){ var e=d.equipment[it.itemId]; if(e && e.grantsSlot) slotsCap += e.grantsSlot; });
   unit.archetypeAbilities.concat(unit.anyAbilities).forEach(function(aid){ if(aid==='zdorovyak') slotsCap += 1; if(aid==='born_wrestler') slotsCap += 1; });
 
-  var slotsUsed = 0; var cost = r.cost + (unit.knownBonus||0);
+  // cost — полная Известность персонажа для показа на карточке/в печати: найм +
+  // снаряжение + бесплатный рост от уровня (knownBonus). Это информационная
+  // ценность бойца, а не то, что списывается с бюджета отряда (см. ниже —
+  // бюджет теперь отдельный кошелёк, state.budget, который тратится в момент
+  // покупки нового предмета/найма, а не пересчитывается из состава отряда).
+  var slotsUsed = 0; var cost = r.cost;
   ownedWeapons.forEach(function(it){ var w=d.weapons[it.itemId]; if(w){ slotsUsed += weaponSlot(w); cost += w.cost; } });
   ownedEquip.forEach(function(it){ var e=d.equipment[it.itemId]; if(e){ slotsUsed += (e.slot||0); cost += (e.cost||0); } });
+  cost += (unit.knownBonus||0);
 
   return { defence:defence, armor:armor, health:health, speed:speed, slotsCap:slotsCap, slotsUsed:slotsUsed, cost:cost,
     increasesUsed: statIncreasesUsed(unit), increasesAllowed: r.statIncreases + (unit.bonusStat||0) };
@@ -654,6 +659,8 @@ function squadTotals(){
     var def = catalogDef(it);
     if(def && def.uniqueMax) uniqueUsage[it.itemId] = (uniqueUsage[it.itemId]||0)+1;
   });
+  // totalCost — суммарная Известность отряда: и покупки, и бесплатный рост от
+  // уровней. Чисто информационная величина отряда, бюджет с ней не сравнивается.
   return { totalCost:totalCost, counts:counts, uniqueUsage:uniqueUsage, seniorSum:seniorSum, noviceSum:noviceSum };
 }
 
@@ -666,7 +673,7 @@ function squadIssues(){
     if(count > r.maxCount) issues.push({level:'danger', text:'«'+r.name+'» больше лимита ('+r.maxCount+').'});
   });
   if(t.noviceSum > t.seniorSum) issues.push({level:'danger', text:'Новобранцев/Тяжёлых Новобранцев ('+t.noviceSum+') больше, чем Командир+Ветераны ('+t.seniorSum+').'});
-  if(t.totalCost > state.budget) issues.push({level:'danger', text:'Превышен бюджет: '+t.totalCost+' / '+state.budget+' Известности.'});
+  if(state.budget < 0) issues.push({level:'danger', text:'Бюджет отряда в минусе ('+state.budget+' Известности) — потрачено больше, чем было.'});
   Object.keys(t.uniqueUsage).forEach(function(id){
     var item = d.weapons[id] || d.equipment[id];
     if(item && t.uniqueUsage[id] > item.uniqueMax) issues.push({level:'danger', text:'«'+item.name+'» превышает лимит на отряд ('+item.uniqueMax+', включая арсенал).'});
@@ -695,25 +702,15 @@ App.setTab = function(tab){
 };
 
 App.setSquadName = function(v){ state.squadName = v; persistHot(); };
-App.setBudget = function(v){ var n = parseInt(v,10); if(!isNaN(n) && n>0){ state.budget = n; renderAll(); } };
+// Бюджет — кошелёк отряда, а не пересчитываемый лимит: тратится в момент покупки
+// нового предмета/найма (см. addUnit/unitAddNew/arsenalAdd), возвращается при
+// удалении. adjustBudget — ручная правка (после миссии и т.п., через модалку).
+App.adjustBudget = function(delta){ state.budget = (state.budget||0) + delta; persistHot(); renderAll(); };
 App.setCampaignXp = function(v){ var n = parseInt(v,10); if(!isNaN(n) && n>=0){ state.campaignXp = n; persistHot(); renderAll(); } };
 
 App.toggleAddMenu = function(){
   var el = document.getElementById('add-dropdown');
   el.hidden = !el.hidden;
-};
-
-App.setArchetype = function(archId){
-  if(archId===state.archetype) return;
-  if(state.units.length>0 && !confirm('Роли и способности у архетипов разные — при смене список бойцов отряда очистится. Продолжить?')){
-    renderAll(); return;
-  }
-  state.archetype = archId;
-  state.units = [];
-  state.arsenal = [];
-  state.squadId = null;
-  persistHot();
-  renderAll();
 };
 
 App.addUnit = function(roleId){
@@ -724,13 +721,17 @@ App.addUnit = function(roleId){
     s.units.push({ id:uid(), roleId:roleId, name:r.name+' '+(count+1), size:r.defaultSize, stats:stats,
       archetypeAbilities:[], anyAbilities:[],
       level:r.level, xp:0, bonusStat:0, bonusArchetype:0, bonusAny:0, knownBonus:0, heroicRoll:false });
+    s.budget = (s.budget||0) - r.cost; // найм списывается с бюджета сразу
   });
   document.getElementById('add-dropdown').hidden = true;
 };
 
 App.removeUnit = function(id){
   if(!confirm('Убрать этого бойца из отряда?')) return;
+  var removed = state.units.find(function(u){ return u.id===id; });
+  var refund = removed ? (currentArchetype().roles[removed.roleId]||{}).cost||0 : 0;
   setState(function(s){
+    s.budget = (s.budget||0) + refund; // возвращаем стоимость найма
     s.arsenal.forEach(function(it){ if(it.ownerId===id) it.ownerId = null; });
     s.units = s.units.filter(function(u){ return u.id!==id; });
   });
@@ -825,7 +826,8 @@ App.toggleAbility = function(unitId, slotType, abilityId, checked){
   renderAll();
 };
 
-// Создать новый экземпляр (тратит уник.лимит предмета на весь отряд) и сразу выдать персонажу.
+// Создать новый экземпляр (списывает его стоимость с бюджета отряда и тратит
+// уник.лимит предмета на весь отряд) и сразу выдать персонажу.
 App.unitAddNew = function(unitId, kind, itemId){
   var u = state.units.find(function(uu){return uu.id===unitId;});
   if(!u) return;
@@ -839,10 +841,13 @@ App.unitAddNew = function(unitId, kind, itemId){
   var it = { id:uid(), itemId:itemId, kind:kind, ownerId:null };
   if(!assignToUnit(it, u)) return; // не помещается (слоты/броня) — новый экземпляр никуда не попал
   state.arsenal.push(it);
+  state.budget = (state.budget||0) - def.cost;
   persistHot(); renderAll();
 };
 
-// Взять уже существующий свободный экземпляр из арсенала отряда (не тратит уник.лимит).
+// Взять уже существующий свободный экземпляр из арсенала отряда — он уже был
+// оплачен при создании (unitAddNew/arsenalAdd), поэтому бюджет не трогаем и
+// уник.лимит не проверяем повторно.
 App.unitTakeFree = function(unitId, kind, itemId){
   var u = state.units.find(function(uu){return uu.id===unitId;});
   if(!u) return;
@@ -851,22 +856,32 @@ App.unitTakeFree = function(unitId, kind, itemId){
   if(assignToUnit(it, u)){ persistHot(); renderAll(); }
 };
 
-// Снять с персонажа и удалить совсем.
+// Снять с персонажа и удалить совсем — стоимость предмета возвращается в бюджет
+// (иначе эксперименты при сборке отряда необратимо съедали бы бюджет).
 App.unitRemoveItem = function(unitId, kind, itemId){
   for(var i=0;i<state.arsenal.length;i++){
     var it = state.arsenal[i];
-    if(it.ownerId===unitId && it.kind===kind && it.itemId===itemId){ state.arsenal.splice(i,1); break; }
+    if(it.ownerId===unitId && it.kind===kind && it.itemId===itemId){
+      var def = catalogDef(it);
+      if(def) state.budget = (state.budget||0) + def.cost;
+      state.arsenal.splice(i,1);
+      break;
+    }
   }
   persistHot(); renderAll();
 };
 
-// Снять с персонажа, но не выбрасывать — вернуть в общий (свободный) арсенал отряда.
+// Снять с персонажа, но не выбрасывать — вернуть в общий (свободный) арсенал
+// отряда. Предмет никуда не делся, поэтому бюджет не меняется.
 App.unitStash = function(unitId, kind, itemId){
   var it = state.arsenal.find(function(x){ return x.ownerId===unitId && x.kind===kind && x.itemId===itemId; });
   if(it) it.ownerId = null;
   persistHot(); renderAll();
 };
 
+// Трофей/покупка в общий (пока никому не выданный) арсенал — тоже новое
+// приобретение, поэтому списывается с бюджета сразу при создании, а не при
+// выдаче персонажу (см. unitTakeFree/arsenalGive выше).
 App.arsenalAdd = function(itemId, kind){
   var d = data();
   var def = kind==='equipment' ? d.equipment[itemId] : d.weapons[itemId];
@@ -876,6 +891,7 @@ App.arsenalAdd = function(itemId, kind){
     if(total >= def.uniqueMax) return;
   }
   state.arsenal.push({ id:uid(), itemId:itemId, kind:kind, ownerId:null });
+  state.budget = (state.budget||0) - def.cost;
   persistHot(); renderAll();
 };
 
@@ -888,7 +904,9 @@ App.arsenalGive = function(instanceId, unitId){
 
 App.arsenalDiscard = function(instanceId){
   if(!confirm('Выбросить предмет из арсенала?')) return;
-  state.arsenal = state.arsenal.filter(function(it){ return it.id!==instanceId; });
+  var it = state.arsenal.find(function(x){ return x.id===instanceId; });
+  if(it){ var def = catalogDef(it); if(def) state.budget = (state.budget||0) + def.cost; }
+  state.arsenal = state.arsenal.filter(function(x){ return x.id!==instanceId; });
   persistHot(); renderAll();
 };
 
@@ -898,15 +916,13 @@ function fmtDie(d){ return d.replace('d','д'); }
 
 function renderSummary(){
   var t = squadTotals();
-  var over = t.totalCost > state.budget;
   var html = '';
   html += '<div class="summary">';
   html += '<div class="name-cell"><span class="label">Отряд</span><input value="'+esc(state.squadName)+'" oninput="App.setSquadName(this.value)"></div>';
-  html += '<div><span class="label">Архетип</span><select class="size-select" style="width:100%;" onchange="App.setArchetype(this.value)">'+
-    Object.keys(data().archetypes).map(function(aid){ var a=data().archetypes[aid]; return '<option value="'+aid+'" '+(state.archetype===aid?'selected':'')+'>'+esc(a.name)+'</option>'; }).join('')+
-    '</select></div>';
+  html += '<div><span class="label">Архетип</span><span style="font-family:var(--font-display);font-weight:700;font-size:17px;">'+esc(currentArchetype().name)+'</span></div>';
   html += '<div><span class="label">Бойцов</span><span class="value num">'+state.units.length+'</span></div>';
-  html += '<div><span class="label">Известность</span><span class="value num">'+t.totalCost+' / <span class="budget-edit"><input type="number" value="'+state.budget+'" onchange="App.setBudget(this.value)"></span></span></div>';
+  html += '<div><span class="label">Известность отряда</span><span class="value num">'+t.totalCost+'</span></div>';
+  html += '<div><span class="label">Бюджет</span><button class="btn small" onclick="App.openModal(\'budget\')">'+state.budget+'</button></div>';
   html += '<div><span class="label">Статус</span>'+(squadIssues().filter(function(i){return i.level==="danger";}).length===0 ? '<span class="pill good">Легален</span>' : '<span class="pill danger">Есть нарушения</span>')+'</div>';
   html += '</div>';
   var issues = squadIssues();
@@ -1039,6 +1055,36 @@ function renderModalContent(){
       '<button class="btn small" onclick="App.setCampaignXp('+((state.campaignXp||0)+5)+')">+5</button>'+
       '</div>';
     body += '<div class="note-inline" style="padding-top:10px;">Опыт отряда начисляется по итогам сценария. Перенести очки конкретному бойцу можно из его собственной карточки опыта (кнопка «Опыт» на карточке бойца).</div>';
+
+  } else if(kind==='budget'){
+    title = 'Бюджет отряда';
+    body += '<div class="derived-box'+(state.budget<0?' over':'')+'" style="margin-bottom:12px;"><div class="dname">Доступно</div><div class="dval num">'+state.budget+'</div></div>';
+    body += '<div class="acc-actions">'+
+      '<button class="btn small" onclick="App.adjustBudget(-5)">&minus;5</button>'+
+      '<button class="btn small" onclick="App.adjustBudget(-1)">&minus;1</button>'+
+      '<button class="btn small" onclick="App.adjustBudget(1)">+1</button>'+
+      '<button class="btn small" onclick="App.adjustBudget(5)">+5</button>'+
+      '<button class="btn small" onclick="App.adjustBudget(10)">+10</button>'+
+      '</div>';
+    body += '<div class="note-inline" style="padding-top:10px;">Списывается сразу при найме бойца или покупке нового предмета (не при выдаче из арсенала — тот уже оплачен) и возвращается при удалении. Пополняйте вручную, когда отряд получает награду по итогам сценария.</div>';
+
+  } else if(kind==='newSquad'){
+    title = 'Новый отряд';
+    if(!newSquadDraft) newSquadDraft = { archetype:'organization', budget:60 };
+    var draftArch = d.archetypes[newSquadDraft.archetype] || d.archetypes.organization;
+    body += '<div style="display:flex;flex-direction:column;gap:14px;">';
+    body += '<div><div class="section-h">Архетип</div><select id="new-squad-archetype" class="size-select" style="width:100%;" onchange="App.setNewSquadArchetype(this.value)">'+
+      Object.keys(d.archetypes).map(function(aid){ var a=d.archetypes[aid]; return '<option value="'+aid+'" '+(newSquadDraft.archetype===aid?'selected':'')+'>'+esc(a.name)+'</option>'; }).join('')+
+      '</select></div>';
+    body += '<div class="card" style="padding:10px 12px;">'+
+      (draftArch.blurb ? '<div class="note-inline" style="margin-bottom:8px;">'+esc(draftArch.blurb)+'</div>' : '')+
+      '<div class="rule-list">'+
+      (draftArch.specialRules||[]).map(function(r){ return '<div><b>'+esc(r.name)+'</b> — '+esc(r.text)+'</div>'; }).join('')+
+      '</div></div>';
+    body += '<div><div class="section-h">Известность на старте</div><p class="note-inline" style="margin-bottom:8px;">Обычно 60, но можно изменить.</p>'+
+      '<input id="new-squad-budget" type="number" value="'+newSquadDraft.budget+'" style="width:110px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px;background:var(--surface);color:var(--text);font-size:15px;"></div>';
+    body += '</div>';
+    body += '<div class="acc-actions" style="margin-top:14px;"><button class="btn small primary" onclick="App.confirmNewSquad()">Создать отряд</button></div>';
 
   } else {
     var u = state.units.find(function(uu){ return uu.id===activeModal.unitId; });
@@ -1430,8 +1476,26 @@ App.saveSquad = function(){
 
 App.newSquad = function(){
   if(state.units.length>0 && !confirm('Начать новый пустой отряд? Несохранённые изменения текущего будут потеряны.')) return;
-  state = { squadName:'Новый отряд', archetype:'organization', budget:60, units:[], arsenal:[], campaignXp:0, squadId:null, tab:'builder' };
+  newSquadDraft = { archetype:'organization', budget:60 };
+  App.openModal('newSquad');
+};
+
+App.setNewSquadArchetype = function(v){
+  var budgetInput = document.getElementById('new-squad-budget');
+  if(budgetInput){ var n = parseInt(budgetInput.value,10); newSquadDraft.budget = isNaN(n) ? newSquadDraft.budget : n; }
+  newSquadDraft.archetype = v;
+  renderModalContent();
+};
+
+App.confirmNewSquad = function(){
+  var budgetInput = document.getElementById('new-squad-budget');
+  var n = budgetInput ? parseInt(budgetInput.value, 10) : NaN;
+  var budget = (!isNaN(n) && n>=0) ? n : 60;
+  var archetype = (newSquadDraft && data().archetypes[newSquadDraft.archetype]) ? newSquadDraft.archetype : 'organization';
+  state = { squadName:'Новый отряд', archetype:archetype, budget:budget, units:[], arsenal:[], campaignXp:0, squadId:null, tab:'builder' };
+  newSquadDraft = null;
   persistHot();
+  App.closeModal();
   App.setTab('builder');
   renderAll();
 };
@@ -1533,7 +1597,7 @@ App.printSquad = function(){
     '@page{size:A4;margin:14mm 12mm;}';
   var arch = currentArchetype();
   var html = '<meta charset="utf-8"><title>'+esc(state.squadName)+'</title><style>'+css+'</style><h1>'+esc(state.squadName)+'</h1>'+
-    '<div class="meta">Архетип: '+esc(arch.name)+' &middot; Известность: '+squadTotals().totalCost+' / '+state.budget+' &middot; Бойцов: '+state.units.length+' &middot; Опыт отряда: '+(state.campaignXp||0)+'</div>';
+    '<div class="meta">Архетип: '+esc(arch.name)+' &middot; Известность отряда: '+squadTotals().totalCost+' &middot; Бюджет: '+state.budget+' &middot; Бойцов: '+state.units.length+' &middot; Опыт отряда: '+(state.campaignXp||0)+'</div>';
   if(arch.specialRules && arch.specialRules.length){
     html += '<div class="card"><div class="cbody"><div class="sub">Спецправила архетипа «'+esc(arch.name)+'»</div>';
     arch.specialRules.forEach(function(r){ html += '<p style="margin:0 0 1.5mm;font-size:9.5pt;line-height:1.35;"><b>'+esc(r.name)+'</b> — '+esc(r.text)+'</p>'; });
