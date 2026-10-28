@@ -406,7 +406,7 @@ var DEFAULT_DATA = {
     amplifier:{name:'Амплификатор силы', slot:1, cost:1, uniqueMax:2, faction:'gifted', text:'Занимает руку. Траты Очков Мотивации на Сверхъестественные силы не учитываются в лимит эффектов Мотивации за активацию; сложность проверок Интеллекта для Сверхъестественных сил −1.'},
     empowered_weapon:{name:'Оружие, наделённое силой', cost:2, uniqueMax:3, faction:'gifted', text:'Улучшение для ОДНОГО оружия персонажа (привяжите вручную): урон +1; ближнего боя — Бронебойность(1); стрелковое — Меткое.'},
 
-    unknown_armor:{name:'Неизвестный тип брони', group:'armor', armorBonus:1, cost:2, faction:'heavy', text:'Броня +1. Сложность проверок Брони никогда не выше 4.'}
+    unknown_armor:{name:'Неизвестный тип брони', armorBonusExtra:1, cost:2, faction:'heavy', text:'Броня +1 (складывается с обычным защитным снаряжением). Сложность проверок Брони никогда не выше 4.'}
   },
 
   glossary:{
@@ -707,6 +707,8 @@ function computeUnit(unit){
 
   var armor = (r.builtinArmor||0) + (sizeBonus ? (sizeBonus.armor||0) : 0);
   ownedEquip.forEach(function(it){ var e=d.equipment[it.itemId]; if(e){ if(e.group==='armor') armor += (e.armorBonus||0); if(e.armorBonusExtra) armor += e.armorBonusExtra; } });
+
+  unit.archetypeAbilities.concat(unit.anyAbilities).forEach(function(aid){ if(aid==='tough_hide') armor += 2; });
 
   var health = 2 + (r.builtinHealth||0) + (sizeBonus ? (sizeBonus.health||0) : 0);
   STAT_KEYS.forEach(function(k){ var i=dieIdx(unit.stats[k]); if(i>=1) health+=1; if(i>=3) health+=1; });
