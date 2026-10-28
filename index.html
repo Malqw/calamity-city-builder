@@ -244,7 +244,7 @@ var DEFAULT_DATA = {
       id:'organization', name:'Организация',
       blurb:'Профессиональные оперативники: военные, агенты, наёмники, специалисты — полагаются на подготовку и снаряжение, а не на сверхспособности.',
       specialRules:[
-        {name:'Сосредоточенные на миссии', text:'Когда персонаж Организации впервые за раунд успешно проходит проверку, связанную с миссией — отряд получает 1 Очко Мотивации.'},
+        {name:'Сосредоточенные на миссии', text:'Когда впервые за раунд персонаж Организации успешно проходит проверку Интеллекта или Воли, связанную с миссией — отряд получает 1 Очко Мотивации. В начале фазы действия один из персонажей Организации может выполнить быстрое действие Взаимодействия.'},
         {name:'Специалисты широкого профиля', text:'Командир и Ветераны Организации могут выбрать ещё одну категорию способностей; для них она считается способностью архетипа (билдер это не считает автоматически — выбирайте вручную).'},
         {name:'Цепочка командования', text:'Пока Ветеран Организации в пределах 8" от Командира — он снижает сложность простых проверок Интеллекта и Воли на 1. Пока Новобранец в пределах 8" от Ветерана — то же самое.'}
       ],
@@ -484,7 +484,96 @@ var modalExpanded = {};
 var newSquadDraft = null; // {archetype, budget} — черновик, пока открыта модалка «Новый отряд»
 var kwTip = document.getElementById('kw-tip');
 
-function data(){ return liveData || DEFAULT_DATA; }
+/* ---------------------------------------------------------- VARIATIONS ---- */
+// «Вариации архетипа» (дизайн-док 0.2.1) — тот же архетип с заменой одного
+// спецправила и/или другим составом. Источник — листы таблицы «Вариации»,
+// «ВариацииРоли», «ВариацииЛимиты» (приходят в liveData.variations); пока API
+// их не отдаёт (старый бэкенд/оффлайн) — берётся запасной набор FALLBACK_VARIATIONS
+// ниже. Накладываются поверх базового архетипа, поэтому правки базы в таблице
+// подхватываются и в вариациях. В отряде state.archetype хранит id вариации
+// (например 'organization_elite') — не переименовывайте id в таблице.
+//   replaceRule — спецправило базы с именем from заменяется на rule
+//   roles       — значения полей роли, отличающиеся от базы (нет поля = как в базе)
+//   uniqueMax   — другие лимиты «на отряд» для уникального снаряжения/оружия
+//   noSizeBonus — у вариации нет sizeBonusRule базового архетипа
+var FALLBACK_VARIATIONS = {
+  organization_elite:{
+    baseId:'organization', name:'Элитная Секция',
+    blurb:'Меньше бойцов, но каждый — лучше: Командир и Ветераны получают дополнительную способность любой категории. Состав и цены изменены.',
+    replaceRule:{ from:'Цепочка командования', rule:{ name:'Лучшие из лучших', text:'Командир и Ветераны Элитной Секции при добавлении в отряд получают 1 способность из любой категории способностей.' } },
+    roles:{
+      commander:{ cost:11, anyAbilitySlots:2 },
+      veteran:{ maxCount:2, cost:8, anyAbilitySlots:1 },
+      heavyVeteran:{ maxCount:2, cost:9 },
+      recruit:{ maxCount:4, cost:5, level:4, archetypeAbilitySlots:1 }
+    },
+    uniqueMax:{}
+  },
+  gifted_coven:{
+    baseId:'gifted', name:'Ковен',
+    blurb:'Сплочённая группа, чьи Командир и Ветераны используют силы через Новобранцев. Другой список уникальной экипировки.',
+    replaceRule:{ from:'Сверхъестественная связь', rule:{ name:'Незримая связь', text:'Командир и Ветераны Ковена могут использовать способности Духовных сил и Манифестаций, проводя измерения линии видимости и дальности от любых дружественных Новобранцев Ковена, которые находятся в пределах 12 дюймов от них.' } },
+    roles:{},
+    uniqueMax:{ talisman:3, amplifier:3, empowered_weapon:1 }
+  },
+  heavy_kaiju:{
+    baseId:'heavy', name:'Нападение Кайдзю',
+    blurb:'Монстры-гиганты и их свита: размер 3 не даёт бонус Брони/Здоровья, зато Командир и Ветераны получают способность «Больше чем человек». В билдере эта способность — дополнительный слот способности архетипа. Новобранцев больше, и они дешевле.',
+    noSizeBonus:true,
+    replaceRule:{ from:'Неостановимая сила', rule:{ name:'Чудовищные противники', text:'Командир и Ветераны Нападения Кайдзю при добавлении в отряд получают 1 способность из категории Больше чем человек.' } },
+    roles:{
+      commander:{ archetypeAbilitySlots:4 },
+      veteran:{ archetypeAbilitySlots:3 },
+      heavyRecruit:{ cost:6 },
+      recruit:{ maxCount:6, cost:3, level:3, archetypeAbilitySlots:0 }
+    },
+    uniqueMax:{}
+  }
+};
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+function withVariations(src){
+  var out = Object.assign({}, src);
+  out.archetypes = Object.assign({}, src.archetypes);
+  var variations = src.variations || FALLBACK_VARIATIONS;
+  Object.keys(variations).forEach(function(vid){
+    var v = variations[vid]; var base = src.archetypes[v.baseId];
+    if(!base || src.archetypes[vid]) return;
+    var a = clone(base);
+    a.id = vid; a.baseId = v.baseId; a.variationName = v.name;
+    a.name = v.name || vid; a.fullName = base.name+' — '+a.name;
+    if(v.blurb) a.blurb = v.blurb;
+    if(v.replaceRule && v.replaceRule.rule){
+      var rules = a.specialRules || [];
+      var idx = rules.findIndex(function(r){ return r.name===v.replaceRule.from; });
+      if(idx>=0) rules[idx] = v.replaceRule.rule; else rules.push(v.replaceRule.rule);
+      a.specialRules = rules;
+    }
+    if(v.noSizeBonus) delete a.sizeBonusRule;
+    Object.keys(v.roles||{}).forEach(function(rid){
+      var r = a.roles[rid]; if(!r) return;
+      Object.keys(v.roles[rid]).forEach(function(k){ r[k] = v.roles[rid][k]; });
+    });
+    a.uniqueMaxOverrides = v.uniqueMax || {};
+    out.archetypes[vid] = a;
+  });
+  return out;
+}
+var variationCache = { src:null, out:null };
+function data(){
+  var src = liveData || DEFAULT_DATA;
+  if(variationCache.src!==src){ variationCache.src = src; variationCache.out = withVariations(src); }
+  return variationCache.out;
+}
+function archBaseId(aid){ var a = data().archetypes[aid]; return (a && a.baseId) || aid; }
+function archLabel(a){ return (a && (a.fullName || a.name)) || ''; }
+// Лимит «на отряд» для предмета с учётом вариации архетипа
+function uniqMax(itemId){
+  var d = data(); var def = d.weapons[itemId] || d.equipment[itemId];
+  if(!def) return 0;
+  var ov = (currentArchetype() && currentArchetype().uniqueMaxOverrides) || {};
+  return ov[itemId]!==undefined ? ov[itemId] : (def.uniqueMax||0);
+}
 
 var LS_STATE_KEY = 'calamitycity_builder_state_v1';
 var LS_IDENTITY_KEY = 'calamitycity_builder_identity_v1';
@@ -602,7 +691,7 @@ function assignToUnit(it, unit){
   return true;
 }
 
-function factionOk(item){ return !item.faction || item.faction===state.archetype; }
+function factionOk(item){ return !item.faction || item.faction===archBaseId(state.archetype); }
 
 /* ---------------------------------------------------------------------- */
 
@@ -657,7 +746,7 @@ function squadTotals(){
   });
   state.arsenal.forEach(function(it){
     var def = catalogDef(it);
-    if(def && def.uniqueMax) uniqueUsage[it.itemId] = (uniqueUsage[it.itemId]||0)+1;
+    if(def && uniqMax(it.itemId)) uniqueUsage[it.itemId] = (uniqueUsage[it.itemId]||0)+1;
   });
   // totalCost — суммарная Известность отряда: и покупки, и бесплатный рост от
   // уровней. Чисто информационная величина отряда, бюджет с ней не сравнивается.
@@ -676,7 +765,7 @@ function squadIssues(){
   if(state.budget < 0) issues.push({level:'danger', text:'Бюджет отряда в минусе ('+state.budget+' Известности) — потрачено больше, чем было.'});
   Object.keys(t.uniqueUsage).forEach(function(id){
     var item = d.weapons[id] || d.equipment[id];
-    if(item && t.uniqueUsage[id] > item.uniqueMax) issues.push({level:'danger', text:'«'+item.name+'» превышает лимит на отряд ('+item.uniqueMax+', включая арсенал).'});
+    if(item && t.uniqueUsage[id] > uniqMax(id)) issues.push({level:'danger', text:'«'+item.name+'» превышает лимит на отряд ('+uniqMax(id)+', включая арсенал).'});
   });
   state.units.forEach(function(u){
     var c = computeUnit(u);
@@ -834,9 +923,9 @@ App.unitAddNew = function(unitId, kind, itemId){
   var d = data();
   var def = kind==='equipment' ? d.equipment[itemId] : d.weapons[itemId];
   if(!def || !canEquip(def, u)) return;
-  if(def.uniqueMax){
+  if(uniqMax(itemId)){
     var total = state.arsenal.filter(function(x){ return x.itemId===itemId; }).length;
-    if(total >= def.uniqueMax) return;
+    if(total >= uniqMax(itemId)) return;
   }
   var it = { id:uid(), itemId:itemId, kind:kind, ownerId:null };
   if(!assignToUnit(it, u)) return; // не помещается (слоты/броня) — новый экземпляр никуда не попал
@@ -886,9 +975,9 @@ App.arsenalAdd = function(itemId, kind){
   var d = data();
   var def = kind==='equipment' ? d.equipment[itemId] : d.weapons[itemId];
   if(!def) return;
-  if(def.uniqueMax){
+  if(uniqMax(itemId)){
     var total = state.arsenal.filter(function(it){ return it.itemId===itemId; }).length;
-    if(total >= def.uniqueMax) return;
+    if(total >= uniqMax(itemId)) return;
   }
   state.arsenal.push({ id:uid(), itemId:itemId, kind:kind, ownerId:null });
   state.budget = (state.budget||0) - def.cost;
@@ -919,7 +1008,7 @@ function renderSummary(){
   var html = '';
   html += '<div class="summary">';
   html += '<div class="name-cell"><span class="label">Отряд</span><input value="'+esc(state.squadName)+'" oninput="App.setSquadName(this.value)"></div>';
-  html += '<div><span class="label">Архетип</span><span style="font-family:var(--font-display);font-weight:700;font-size:17px;">'+esc(currentArchetype().name)+'</span></div>';
+  html += '<div><span class="label">Архетип</span><span style="font-family:var(--font-display);font-weight:700;font-size:17px;">'+esc(archLabel(currentArchetype()))+'</span></div>';
   html += '<div><span class="label">Бойцов</span><span class="value num">'+state.units.length+'</span></div>';
   html += '<div><span class="label">Известность отряда</span><span class="value num">'+t.totalCost+'</span></div>';
   html += '<div><span class="label">Бюджет</span><button class="btn small" onclick="App.openModal(\'budget\')">'+state.budget+'</button></div>';
@@ -1036,7 +1125,7 @@ function renderModalContent(){
           if(grp[0]!=='equipment' && def.kind!==grp[0]) return;
           if(!factionOk(def)) return;
           var total = state.arsenal.filter(function(it){ return it.itemId===id; }).length;
-          var blocked = def.uniqueMax && total>=def.uniqueMax;
+          var blocked = uniqMax(id) && total>=uniqMax(id);
           body += '<div class="acc-item"><div class="acc-head" style="padding:7px 8px;"><span class="acc-title">'+esc(def.name)+'</span><span class="acc-right"><span class="cost-chip">'+def.cost+' Изв.</span>'+
             '<button class="btn small" '+(blocked?'disabled':'')+' onclick="App.arsenalAdd(\''+id+'\',\''+(grp[0]==='equipment' ? 'equipment' : def.kind)+'\')">+ В арсенал</button></span></div></div>';
         });
@@ -1070,12 +1159,22 @@ function renderModalContent(){
 
   } else if(kind==='newSquad'){
     title = 'Новый отряд';
-    if(!newSquadDraft) newSquadDraft = { archetype:'organization', budget:60 };
-    var draftArch = d.archetypes[newSquadDraft.archetype] || d.archetypes.organization;
+    if(!newSquadDraft) newSquadDraft = { archetype:'organization', variation:'', budget:60 };
+    var baseIds = Object.keys(d.archetypes).filter(function(aid){ return !d.archetypes[aid].baseId; });
+    if(baseIds.indexOf(newSquadDraft.archetype)<0) newSquadDraft.archetype = baseIds[0];
+    var variationIds = Object.keys(d.archetypes).filter(function(aid){ return d.archetypes[aid].baseId===newSquadDraft.archetype; });
+    if(variationIds.indexOf(newSquadDraft.variation)<0) newSquadDraft.variation = '';
+    var draftArch = d.archetypes[newSquadDraft.variation || newSquadDraft.archetype];
     body += '<div style="display:flex;flex-direction:column;gap:14px;">';
     body += '<div><div class="section-h">Архетип</div><select id="new-squad-archetype" class="size-select" style="width:100%;" onchange="App.setNewSquadArchetype(this.value)">'+
-      Object.keys(d.archetypes).map(function(aid){ var a=d.archetypes[aid]; return '<option value="'+aid+'" '+(newSquadDraft.archetype===aid?'selected':'')+'>'+esc(a.name)+'</option>'; }).join('')+
+      baseIds.map(function(aid){ var a=d.archetypes[aid]; return '<option value="'+aid+'" '+(newSquadDraft.archetype===aid?'selected':'')+'>'+esc(a.name)+'</option>'; }).join('')+
       '</select></div>';
+    if(variationIds.length){
+      body += '<div><div class="section-h">Вариация архетипа</div><select id="new-squad-variation" class="size-select" style="width:100%;" onchange="App.setNewSquadVariation(this.value)">'+
+        '<option value="" '+(!newSquadDraft.variation?'selected':'')+'>Стандартный состав</option>'+
+        variationIds.map(function(vid){ return '<option value="'+vid+'" '+(newSquadDraft.variation===vid?'selected':'')+'>'+esc(d.archetypes[vid].name)+'</option>'; }).join('')+
+        '</select></div>';
+    }
     body += '<div class="card" style="padding:10px 12px;">'+
       (draftArch.blurb ? '<div class="note-inline" style="margin-bottom:8px;">'+esc(draftArch.blurb)+'</div>' : '')+
       '<div class="rule-list">'+
@@ -1177,11 +1276,11 @@ function renderModalContent(){
         var reasonsTake = fitReasons(w, wKind, u);
         var reasonsNew = reasonsTake.slice();
         var totalInSquad = state.arsenal.filter(function(it){ return it.itemId===wid; }).length;
-        if(w.uniqueMax && totalInSquad>=w.uniqueMax) reasonsNew.push('лимит '+w.uniqueMax+' на отряд исчерпан');
+        if(uniqMax(wid) && totalInSquad>=uniqMax(wid)) reasonsNew.push('лимит '+uniqMax(wid)+' на отряд исчерпан');
         var open = !!modalExpanded['w:'+wid];
         body += '<div class="acc-item'+(count>0 ? ' picked' : '')+'">'+accHead('w:'+wid, open, '<span class="acc-title">'+esc(w.name)+(count>0 ? ' &times;'+count : '')+'</span>', '<span class="cost-chip">'+w.cost+' Изв.</span>');
         if(open){
-          body += '<div class="acc-body"><div class="acc-stats"><span>Дальность: <b>'+w.range+'&Prime;</b></span><span>Урон: <b>'+w.damage+'</b></span><span>Слотов: <b>'+weaponSlot(w)+'</b></span>'+(w.uniqueMax ? '<span>Уник.: <b>'+w.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
+          body += '<div class="acc-body"><div class="acc-stats"><span>Дальность: <b>'+w.range+'&Prime;</b></span><span>Урон: <b>'+w.damage+'</b></span><span>Слотов: <b>'+weaponSlot(w)+'</b></span>'+(uniqMax(wid) ? '<span>Уник.: <b>'+uniqMax(wid)+'/отряд</b></span>' : '')+'</div>'+
             (w.traits.length ? '<div class="kw-row">'+kwChips(w.traits)+'</div>' : '')+
             qtyAction(count, freeCount, reasonsNew.join('; '), reasonsTake.join('; '),
               'App.unitAddNew(\''+u.id+'\',\''+wKind+'\',\''+wid+'\')', 'App.unitTakeFree(\''+u.id+'\',\''+wKind+'\',\''+wid+'\')',
@@ -1200,12 +1299,12 @@ function renderModalContent(){
         var reasonsTake = fitReasons(e, 'equipment', u);
         var reasonsNew = reasonsTake.slice();
         var totalInSquad = state.arsenal.filter(function(it){ return it.itemId===eid; }).length;
-        if(e.uniqueMax && totalInSquad>=e.uniqueMax) reasonsNew.push('лимит '+e.uniqueMax+' на отряд исчерпан');
+        if(uniqMax(eid) && totalInSquad>=uniqMax(eid)) reasonsNew.push('лимит '+uniqMax(eid)+' на отряд исчерпан');
         var open = !!modalExpanded['e:'+eid];
         body += '<div class="acc-item'+(count>0 ? ' picked' : '')+'">'+accHead('e:'+eid, open, '<span class="acc-title">'+esc(e.name)+(count>0 ? ' &times;'+count : '')+'</span>', '<span class="cost-chip">'+e.cost+' Изв.</span>');
         if(open){
           body += '<div class="acc-body"><div class="acc-text">'+esc(e.text||'')+'</div>'+
-            '<div class="acc-stats">'+(e.slot ? '<span>Слот инвентаря: <b>'+e.slot+'</b></span>' : '')+(e.reqStrength ? '<span>Сила: <b>'+fmtDie(e.reqStrength)+'</b></span>' : '')+(e.uniqueMax ? '<span>Уник.: <b>'+e.uniqueMax+'/отряд</b></span>' : '')+'</div>'+
+            '<div class="acc-stats">'+(e.slot ? '<span>Слот инвентаря: <b>'+e.slot+'</b></span>' : '')+(e.reqStrength ? '<span>Сила: <b>'+fmtDie(e.reqStrength)+'</b></span>' : '')+(uniqMax(eid) ? '<span>Уник.: <b>'+uniqMax(eid)+'/отряд</b></span>' : '')+'</div>'+
             qtyAction(count, freeCount, reasonsNew.join('; '), reasonsTake.join('; '),
               'App.unitAddNew(\''+u.id+'\',\'equipment\',\''+eid+'\')', 'App.unitTakeFree(\''+u.id+'\',\'equipment\',\''+eid+'\')',
               'App.unitRemoveItem(\''+u.id+'\',\'equipment\',\''+eid+'\')', 'App.unitStash(\''+u.id+'\',\'equipment\',\''+eid+'\')')+'</div>';
@@ -1476,14 +1575,23 @@ App.saveSquad = function(){
 
 App.newSquad = function(){
   if(state.units.length>0 && !confirm('Начать новый пустой отряд? Несохранённые изменения текущего будут потеряны.')) return;
-  newSquadDraft = { archetype:'organization', budget:60 };
+  newSquadDraft = { archetype:'organization', variation:'', budget:60 };
   App.openModal('newSquad');
 };
 
-App.setNewSquadArchetype = function(v){
+function syncNewSquadBudget(){
   var budgetInput = document.getElementById('new-squad-budget');
   if(budgetInput){ var n = parseInt(budgetInput.value,10); newSquadDraft.budget = isNaN(n) ? newSquadDraft.budget : n; }
+}
+App.setNewSquadArchetype = function(v){
+  syncNewSquadBudget();
   newSquadDraft.archetype = v;
+  newSquadDraft.variation = '';
+  renderModalContent();
+};
+App.setNewSquadVariation = function(v){
+  syncNewSquadBudget();
+  newSquadDraft.variation = v;
   renderModalContent();
 };
 
@@ -1491,7 +1599,8 @@ App.confirmNewSquad = function(){
   var budgetInput = document.getElementById('new-squad-budget');
   var n = budgetInput ? parseInt(budgetInput.value, 10) : NaN;
   var budget = (!isNaN(n) && n>=0) ? n : 60;
-  var archetype = (newSquadDraft && data().archetypes[newSquadDraft.archetype]) ? newSquadDraft.archetype : 'organization';
+  var chosen = newSquadDraft && (newSquadDraft.variation || newSquadDraft.archetype);
+  var archetype = (chosen && data().archetypes[chosen]) ? chosen : 'organization';
   state = { squadName:'Новый отряд', archetype:archetype, budget:budget, units:[], arsenal:[], campaignXp:0, squadId:null, tab:'builder' };
   newSquadDraft = null;
   persistHot();
@@ -1559,7 +1668,7 @@ function renderMine(){
   } else {
     html += '<div class="card"><div style="display:flex;flex-direction:column;gap:8px;">';
     mySquads.forEach(function(sq){
-      var archName = (data().archetypes[sq.archetype]||{}).name || sq.archetype;
+      var archName = archLabel(data().archetypes[sq.archetype]) || sq.archetype;
       html += '<div class="squad-row"><span class="sn">'+esc(sq.squadName||'Без названия')+'</span>'+
         '<span class="meta">'+esc(archName)+' &middot; '+(sq.units||[]).length+' бойцов &middot; бюджет '+(sq.budget||60)+'</span>'+
         '<button class="btn small" onclick="App.loadSquad(\''+sq.id+'\')">Открыть</button>'+
@@ -1597,9 +1706,9 @@ App.printSquad = function(){
     '@page{size:A4;margin:14mm 12mm;}';
   var arch = currentArchetype();
   var html = '<meta charset="utf-8"><title>'+esc(state.squadName)+'</title><style>'+css+'</style><h1>'+esc(state.squadName)+'</h1>'+
-    '<div class="meta">Архетип: '+esc(arch.name)+' &middot; Известность отряда: '+squadTotals().totalCost+' &middot; Бюджет: '+state.budget+' &middot; Бойцов: '+state.units.length+' &middot; Опыт отряда: '+(state.campaignXp||0)+'</div>';
+    '<div class="meta">Архетип: '+esc(archLabel(arch))+' &middot; Известность отряда: '+squadTotals().totalCost+' &middot; Бюджет: '+state.budget+' &middot; Бойцов: '+state.units.length+' &middot; Опыт отряда: '+(state.campaignXp||0)+'</div>';
   if(arch.specialRules && arch.specialRules.length){
-    html += '<div class="card"><div class="cbody"><div class="sub">Спецправила архетипа «'+esc(arch.name)+'»</div>';
+    html += '<div class="card"><div class="cbody"><div class="sub">Спецправила архетипа «'+esc(archLabel(arch))+'»</div>';
     arch.specialRules.forEach(function(r){ html += '<p style="margin:0 0 1.5mm;font-size:9.5pt;line-height:1.35;"><b>'+esc(r.name)+'</b> — '+esc(r.text)+'</p>'; });
     html += '</div></div>';
   }

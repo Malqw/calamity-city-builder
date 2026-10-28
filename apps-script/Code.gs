@@ -31,6 +31,9 @@ var SHEET_ROLES = 'Роли';
 var SHEET_SPECIAL_RULES = 'Спецправила';
 var SHEET_GLOSSARY = 'Глоссарий';
 var SHEET_SQUADS = 'Отряды';
+var SHEET_VARIATIONS = 'Вариации';
+var SHEET_VARIATION_ROLES = 'ВариацииРоли';
+var SHEET_VARIATION_LIMITS = 'ВариацииЛимиты';
 
 /* ============================================================== МЕНЮ ==== */
 
@@ -38,6 +41,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Calamity City')
     .addItem('Создать/обновить вкладки с начальными данными', 'seedAll')
+    .addItem('Добавить вариации архетипов (правила 0.2.1)', 'addVariations021')
     .addToUi();
 }
 
@@ -233,6 +237,7 @@ function seedAll() {
   seedGlossary(ss);
   seedArchetypesAndRoles(ss);
   seedSpecialRules(ss);
+  seedVariations(ss);
   ensureSquadsSheet(ss);
   SpreadsheetApp.getUi().alert('Готово! Вкладки с данными созданы/проверены. Изменяйте значения прямо в ячейках — сайт подхватит их при следующем открытии.');
 }
@@ -351,6 +356,98 @@ function seedSpecialRules(ss) {
   sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
 }
 
+/* ===================================== ВАРИАЦИИ АРХЕТИПОВ (правила 0.2.1) ==
+   Три листа: «Вариации» (по строке на вариацию), «ВариацииРоли» (что в ролях
+   отличается от базового архетипа — пустая ячейка = как в базе) и
+   «ВариацииЛимиты» (другие лимиты «на отряд» для уникального снаряжения).
+   Сидирование создаёт листы и заполняет их ТОЛЬКО если они пусты; существующие
+   листы, правки в них и лист «Отряды» не затрагиваются. */
+
+var VARIATION_HEADERS = ['id', 'baseId (id базового архетипа)', 'name', 'blurb (описание)', 'replaceRuleFrom (имя заменяемого спецправила базы)', 'ruleName (новое спецправило)', 'ruleText', 'noSizeBonus (TRUE — убрать бонус размера базы)'];
+var VARIATION_ROLE_HEADERS = ['variationId', 'roleId', 'roleName (для удобства, не читается)', 'maxCount', 'cost', 'level', 'statIncreases', 'archetypeAbilitySlots', 'anyAbilitySlots'];
+var VARIATION_LIMIT_HEADERS = ['variationId', 'itemId', 'itemName (для удобства, не читается)', 'uniqueMax'];
+
+var SEED_VARIATIONS = [
+  ['organization_elite', 'organization', 'Элитная Секция',
+    'Меньше бойцов, но каждый — лучше: Командир и Ветераны получают дополнительную способность любой категории. Состав и цены изменены.',
+    'Цепочка командования', 'Лучшие из лучших',
+    'Командир и Ветераны Элитной Секции при добавлении в отряд получают 1 способность из любой категории способностей.', ''],
+  ['gifted_coven', 'gifted', 'Ковен',
+    'Сплочённая группа, чьи Командир и Ветераны используют силы через Новобранцев. Другой список уникальной экипировки.',
+    'Сверхъестественная связь', 'Незримая связь',
+    'Командир и Ветераны Ковена могут использовать способности Духовных сил и Манифестаций, проводя измерения линии видимости и дальности от любых дружественных Новобранцев Ковена, которые находятся в пределах 12 дюймов от них.', ''],
+  ['heavy_kaiju', 'heavy', 'Нападение Кайдзю',
+    'Монстры-гиганты и их свита: размер 3 не даёт бонус Брони/Здоровья, зато Командир и Ветераны получают способность «Больше чем человек». В билдере эта способность — дополнительный слот способности архетипа. Новобранцев больше, и они дешевле.',
+    'Неостановимая сила', 'Чудовищные противники',
+    'Командир и Ветераны Нападения Кайдзю при добавлении в отряд получают 1 способность из категории Больше чем человек.', true]
+];
+
+// [variationId, roleId, roleName, maxCount, cost, level, statIncreases, archetypeAbilitySlots, anyAbilitySlots]; '' = как в базе
+var SEED_VARIATION_ROLES = [
+  ['organization_elite', 'commander', 'Командир', '', 11, '', '', '', 2],
+  ['organization_elite', 'veteran', 'Ветеран', 2, 8, '', '', '', 1],
+  ['organization_elite', 'heavyVeteran', 'Тяжёлый Ветеран', 2, 9, '', '', '', ''],
+  ['organization_elite', 'recruit', 'Новобранец', 4, 5, 4, '', 1, ''],
+  ['heavy_kaiju', 'commander', 'Командир', '', '', '', '', 4, ''],
+  ['heavy_kaiju', 'veteran', 'Ветеран', '', '', '', '', 3, ''],
+  ['heavy_kaiju', 'heavyRecruit', 'Тяжёлый Новобранец', '', 6, '', '', '', ''],
+  ['heavy_kaiju', 'recruit', 'Новобранец', 6, 3, 3, '', 0, '']
+];
+
+var SEED_VARIATION_LIMITS = [
+  ['gifted_coven', 'talisman', 'Защитный талисман', 3],
+  ['gifted_coven', 'amplifier', 'Амплификатор силы', 3],
+  ['gifted_coven', 'empowered_weapon', 'Оружие, наделённое силой', 1]
+];
+
+var OLD_MISSION_FOCUS_TEXT = 'Когда персонаж Организации впервые за раунд успешно проходит проверку, связанную с миссией — отряд получает 1 Очко Мотивации.';
+var NEW_MISSION_FOCUS_TEXT = 'Когда впервые за раунд персонаж Организации успешно проходит проверку Интеллекта или Воли, связанную с миссией — отряд получает 1 Очко Мотивации. В начале фазы действия один из персонажей Организации может выполнить быстрое действие Взаимодействия.';
+
+function seedVariationSheet_(ss, name, headers, rows) {
+  var sh = getOrCreateSheet_(ss, name, headers);
+  if (sheetHasDataRows_(sh)) return false;
+  sh.getRange(2, 1, rows.length, headers.length).setValues(rows);
+  return true;
+}
+
+function seedVariations(ss) {
+  var created = [];
+  if (seedVariationSheet_(ss, SHEET_VARIATIONS, VARIATION_HEADERS, SEED_VARIATIONS)) created.push(SHEET_VARIATIONS);
+  if (seedVariationSheet_(ss, SHEET_VARIATION_ROLES, VARIATION_ROLE_HEADERS, SEED_VARIATION_ROLES)) created.push(SHEET_VARIATION_ROLES);
+  if (seedVariationSheet_(ss, SHEET_VARIATION_LIMITS, VARIATION_LIMIT_HEADERS, SEED_VARIATION_LIMITS)) created.push(SHEET_VARIATION_LIMITS);
+  return created;
+}
+
+// Правка текста «Сосредоточенные на миссии» (0.2.1) — только если в ячейке всё
+// ещё стоит старый стартовый текст; если его уже кто-то менял, не трогаем.
+function updateMissionFocusRule_(ss) {
+  var sh = ss.getSheetByName(SHEET_SPECIAL_RULES);
+  if (!sh || sh.getLastRow() < 2) return 'лист «' + SHEET_SPECIAL_RULES + '» не найден — пропущено';
+  var values = sh.getRange(2, 1, sh.getLastRow() - 1, 3).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (String(values[i][0]).trim() === 'organization' && String(values[i][1]).trim() === 'Сосредоточенные на миссии') {
+      var current = String(values[i][2]).trim();
+      if (current === NEW_MISSION_FOCUS_TEXT) return 'текст «Сосредоточенные на миссии» уже актуален';
+      if (current !== OLD_MISSION_FOCUS_TEXT) return 'текст «Сосредоточенные на миссии» отличается от стартового (кто-то уже правил) — не тронут, при необходимости обновите вручную';
+      sh.getRange(i + 2, 3).setValue(NEW_MISSION_FOCUS_TEXT);
+      return 'текст «Сосредоточенные на миссии» обновлён до 0.2.1';
+    }
+  }
+  return 'правило «Сосредоточенные на миссии» не найдено — пропущено';
+}
+
+// Пункт меню: безопасно добавляет всё, что нужно для правил 0.2.1.
+// Ничего не перезаписывает и не трогает лист «Отряды».
+function addVariations021() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var created = seedVariations(ss);
+  var ruleMsg = updateMissionFocusRule_(ss);
+  SpreadsheetApp.getUi().alert(
+    'Готово.\n\n' +
+    (created.length ? 'Созданы и заполнены листы: ' + created.join(', ') : 'Листы вариаций уже были заполнены — не тронуты') +
+    '\n' + ruleMsg + '\n\nСохранённые отряды не затронуты.');
+}
+
 function ensureSquadsSheet(ss) {
   // arsenalJson/campaignXp добавлены позже — если лист уже существовал со старыми
   // 8 колонками, дописываем недостающие справа, не трогая уже сохранённые отряды.
@@ -389,6 +486,52 @@ function compact_(obj) {
   var out = {};
   Object.keys(obj).forEach(function (k) { if (obj[k] !== undefined && obj[k] !== '') out[k] = obj[k]; });
   return out;
+}
+
+function buildVariations_(ss) {
+  var variations = {};
+  sheetRows_(ss.getSheetByName(SHEET_VARIATIONS)).forEach(function (row) {
+    var id = str_(row['id']);
+    var baseId = str_(row['baseId (id базового архетипа)']);
+    if (!id || !baseId) return;
+    var v = compact_({
+      baseId: baseId,
+      name: str_(row['name']),
+      blurb: str_(row['blurb (описание)']),
+      noSizeBonus: bool_(row['noSizeBonus (TRUE — убрать бонус размера базы)']) || undefined
+    });
+    var ruleName = str_(row['ruleName (новое спецправило)']);
+    if (ruleName) {
+      v.replaceRule = {
+        from: str_(row['replaceRuleFrom (имя заменяемого спецправила базы)']) || '',
+        rule: { name: ruleName, text: str_(row['ruleText']) || '' }
+      };
+    }
+    v.roles = {};
+    v.uniqueMax = {};
+    variations[id] = v;
+  });
+  sheetRows_(ss.getSheetByName(SHEET_VARIATION_ROLES)).forEach(function (row) {
+    var vid = str_(row['variationId']);
+    var rid = str_(row['roleId']);
+    if (!vid || !rid || !variations[vid]) return;
+    variations[vid].roles[rid] = compact_({
+      maxCount: num_(row['maxCount']),
+      cost: num_(row['cost']),
+      level: num_(row['level']),
+      statIncreases: num_(row['statIncreases']),
+      archetypeAbilitySlots: num_(row['archetypeAbilitySlots']),
+      anyAbilitySlots: num_(row['anyAbilitySlots'])
+    });
+  });
+  sheetRows_(ss.getSheetByName(SHEET_VARIATION_LIMITS)).forEach(function (row) {
+    var vid = str_(row['variationId']);
+    var itemId = str_(row['itemId']);
+    var max = num_(row['uniqueMax']);
+    if (!vid || !itemId || max === undefined || !variations[vid]) return;
+    variations[vid].uniqueMax[itemId] = max;
+  });
+  return variations;
 }
 
 function buildGameData() {
@@ -502,7 +645,10 @@ function buildGameData() {
     });
   });
 
-  return { archetypes: archetypes, abilities: abilities, weapons: weapons, equipment: equipment, glossary: glossary };
+  // variations: undefined, пока листов вариаций нет (сайт тогда берёт встроенный запасной набор)
+  var variations = ss.getSheetByName(SHEET_VARIATIONS) ? buildVariations_(ss) : undefined;
+
+  return { archetypes: archetypes, abilities: abilities, weapons: weapons, equipment: equipment, glossary: glossary, variations: variations };
 }
 
 /* ============================================================ ОТРЯДЫ ==== */
